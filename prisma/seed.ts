@@ -1,7 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { v4 as uuidv4 } from 'uuid';
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is not set');
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 
 const CATEGORIES = [
   { slug: 'restaurants', name: 'Migahawa', nameEn: 'Restaurants', icon: '🍽️', color: '#FF6B35', position: 0 },
