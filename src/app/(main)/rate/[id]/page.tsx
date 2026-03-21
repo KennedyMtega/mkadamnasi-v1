@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Share2, Flag, MapPin, Star, Users, Shield, CheckCircle, MessageSquare } from 'lucide-react';
+import { Share2, Flag, MapPin, Star, Shield, CheckCircle, MessageSquare } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -11,44 +11,112 @@ import StarRating from '@/components/ui/StarRating';
 import ProgressBar from '@/components/ui/ProgressBar';
 import Avatar from '@/components/ui/Avatar';
 import Toast from '@/components/ui/Toast';
-import { getRatingColor, getRatingLabel, formatNumber } from '@/lib/utils';
-
-const mockRating = {
-  id: '1',
-  name: 'Hyatt Regency Dar es Salaam',
-  category: 'Migahawa',
-  region: 'Dar es Salaam',
-  description: 'Mgahawa wa kiwango cha juu katikati ya jiji la Dar es Salaam, unaojulikana kwa vyakula vya kimataifa na mazingira mazuri.',
-  averageRating: 4.7,
-  totalRatings: 2341,
-  distribution: { 5: 1580, 4: 468, 3: 187, 2: 70, 1: 36 },
-  recentReviews: [
-    { id: 'r1', score: 5, review: 'Mazingira mazuri sana na huduma bora. Chakula kitamu!', createdAt: '2026-03-18' },
-    { id: 'r2', score: 4, review: 'Nzuri lakini bei ni juu kidogo.', createdAt: '2026-03-16' },
-    { id: 'r3', score: 5, review: 'Best restaurant in Dar! Highly recommended.', createdAt: '2026-03-15' },
-  ],
-};
+import Skeleton from '@/components/ui/Skeleton';
+import { getRatingColor, formatNumber } from '@/lib/utils';
+import { api } from '@/lib/api-client';
 
 const RATING_COLORS = ['#EF4444', '#F97316', '#F59E0B', '#34D399', '#10B981'];
 
+interface RatingData {
+  id: string;
+  title: string;
+  description: string | null;
+  entityName: string;
+  category: { name: string };
+  region: string | null;
+  averageRating: number;
+  totalRatings: number;
+  distribution: Record<string, number>;
+  hasRated: boolean;
+  userScore: number | null;
+  recentReviews: Array<{
+    id: string;
+    score: number;
+    review: string | null;
+    createdAt: string;
+  }>;
+}
+
 export default function RatingDetailPage() {
   const { id } = useParams();
+  const [data, setData] = useState<RatingData | null>(null);
   const [userRating, setUserRating] = useState(0);
   const [review, setReview] = useState('');
   const [hasRated, setHasRated] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const data = mockRating;
+  useEffect(() => {
+    async function fetchRating() {
+      try {
+        const res = await api.getRating(id as string);
+        setData(res.data);
+        if (res.data.hasRated) {
+          setHasRated(true);
+          if (res.data.userScore) setUserRating(res.data.userScore);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Tatizo la seva');
+      } finally {
+        setPageLoading(false);
+      }
+    }
+    if (id) fetchRating();
+  }, [id]);
 
   const handleSubmitRating = async () => {
-    if (userRating === 0) return;
+    if (userRating === 0 || !data) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setHasRated(true);
-    setLoading(false);
-    setShowToast(true);
+    try {
+      const res = await api.submitRating(data.id, userRating, review || undefined);
+      setData({
+        ...data,
+        averageRating: res.data.averageRating,
+        totalRatings: res.data.totalRatings,
+        distribution: res.data.distribution,
+        hasRated: true,
+        userScore: userRating,
+      });
+      setHasRated(true);
+      setToastMessage(res.message || 'Kadirio lako limehifadhiwa! Asante.');
+      setToastType('success');
+      setShowToast(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Tatizo la seva');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (pageLoading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <TopBar title="Kadirio" showBack />
+        <div className="px-4 lg:px-6 py-4 space-y-4">
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <TopBar title="Kadirio" showBack />
+        <div className="px-4 lg:px-6 py-12 text-center">
+          <p className="text-neutral-700">{error || 'Kadirio halikupatikana.'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -70,17 +138,21 @@ export default function RatingDetailPage() {
         {/* Entity Info */}
         <Card>
           <div className="flex items-center gap-2 mb-3">
-            <Badge variant="orange">{data.category}</Badge>
-            <Badge variant="info"><MapPin size={10} className="mr-0.5" />{data.region}</Badge>
+            <Badge variant="orange">{data.category.name}</Badge>
+            {data.region && (
+              <Badge variant="info"><MapPin size={10} className="mr-0.5" />{data.region}</Badge>
+            )}
           </div>
-          <h1 className="text-xl font-bold text-neutral-900 mb-2">{data.name}</h1>
-          <p className="text-sm text-neutral-700 mb-4">{data.description}</p>
+          <h1 className="text-xl font-bold text-neutral-900 mb-2">{data.entityName}</h1>
+          {data.description && (
+            <p className="text-sm text-neutral-700 mb-4">{data.description}</p>
+          )}
 
           {/* Rating Summary */}
           <div className="flex items-start gap-6 pt-4 border-t border-neutral-300">
             <div className="text-center">
               <div className="text-4xl font-bold" style={{ color: getRatingColor(data.averageRating) }}>
-                {data.averageRating}
+                {data.averageRating.toFixed(1)}
               </div>
               <StarRating rating={data.averageRating} size="sm" />
               <p className="text-xs text-neutral-500 mt-1">{formatNumber(data.totalRatings)} makadirio</p>
@@ -91,14 +163,16 @@ export default function RatingDetailPage() {
                   <span className="text-xs text-neutral-700 w-4 text-right">{star}</span>
                   <Star size={12} fill={RATING_COLORS[star - 1]} stroke={RATING_COLORS[star - 1]} />
                   <ProgressBar
-                    value={data.distribution[star as keyof typeof data.distribution]}
-                    max={data.totalRatings}
+                    value={data.distribution[star.toString()] || 0}
+                    max={data.totalRatings || 1}
                     color={RATING_COLORS[star - 1]}
                     size="sm"
                     className="flex-1"
                   />
                   <span className="text-xs text-neutral-500 w-10 text-right">
-                    {Math.round((data.distribution[star as keyof typeof data.distribution] / data.totalRatings) * 100)}%
+                    {data.totalRatings > 0
+                      ? Math.round(((data.distribution[star.toString()] || 0) / data.totalRatings) * 100)
+                      : 0}%
                   </span>
                 </div>
               ))}
@@ -159,30 +233,32 @@ export default function RatingDetailPage() {
         )}
 
         {/* Recent Reviews */}
-        <div>
-          <h2 className="text-base font-bold text-neutral-900 mb-3 flex items-center gap-2">
-            <MessageSquare size={18} />
-            Maoni ya Hivi Karibuni
-          </h2>
-          <div className="space-y-3">
-            {data.recentReviews.map((r) => (
-              <Card key={r.id} padding="sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Avatar anonymous size="sm" />
-                  <span className="text-xs text-neutral-500">Mtumiaji wa Siri</span>
-                  <span className="text-xs text-neutral-500">•</span>
-                  <StarRating rating={r.score} size="sm" />
-                </div>
-                <p className="text-sm text-neutral-700">{r.review}</p>
-              </Card>
-            ))}
+        {data.recentReviews.length > 0 && (
+          <div>
+            <h2 className="text-base font-bold text-neutral-900 mb-3 flex items-center gap-2">
+              <MessageSquare size={18} />
+              Maoni ya Hivi Karibuni
+            </h2>
+            <div className="space-y-3">
+              {data.recentReviews.map((r) => (
+                <Card key={r.id} padding="sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Avatar anonymous size="sm" />
+                    <span className="text-xs text-neutral-500">Mtumiaji wa Siri</span>
+                    <span className="text-xs text-neutral-500">•</span>
+                    <StarRating rating={r.score} size="sm" />
+                  </div>
+                  <p className="text-sm text-neutral-700">{r.review}</p>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <Toast
-        message="Kadirio lako limehifadhiwa! Asante."
-        type="success"
+        message={toastMessage}
+        type={toastType}
         visible={showToast}
         onClose={() => setShowToast(false)}
       />

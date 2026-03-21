@@ -1,53 +1,111 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Share2, Flag, Clock, Users, Shield, CheckCircle, ChevronRight } from 'lucide-react';
+import { Share2, Flag, Clock, Users, Shield, CheckCircle } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import Avatar from '@/components/ui/Avatar';
 import Toast from '@/components/ui/Toast';
+import Skeleton from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
 
-// Mock vote data
-const mockVote = {
-  id: '1',
-  title: 'Mgahawa Bora Dar es Salaam 2026',
-  description: 'Piga kura kwa mgahawa unaoupenda zaidi katika jiji la Dar es Salaam. Kura ni za siri kabisa.',
-  category: 'Migahawa',
-  totalVotes: 12453,
-  isActive: true,
-  timeLeft: 'Siku 3 zimebaki',
-  createdAt: '2026-03-15',
-  options: [
-    { id: 'a', title: 'Akemi Revolving Restaurant', votes: 3612, percentage: 29, image: null },
-    { id: 'b', title: 'Samaki Samaki', votes: 3113, percentage: 25, image: null },
-    { id: 'c', title: 'Chops N Hops', votes: 2490, percentage: 20, image: null },
-    { id: 'd', title: 'Cape Town Fish Market', votes: 1868, percentage: 15, image: null },
-    { id: 'e', title: 'Mama Safi Kitchen', votes: 1370, percentage: 11, image: null },
-  ],
-};
+interface VoteOption {
+  id: string;
+  title: string;
+  voteCount: number;
+  percentage: number;
+}
+
+interface VoteData {
+  id: string;
+  title: string;
+  description: string | null;
+  category: { name: string };
+  totalVotes: number;
+  isActive: boolean;
+  timeLeft: string | null;
+  options: VoteOption[];
+  hasVoted: boolean;
+  userVoteOptionId: string | null;
+}
 
 export default function VoteDetailPage() {
   const { id } = useParams();
+  const [vote, setVote] = useState<VoteData | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const vote = mockVote;
+  useEffect(() => {
+    async function fetchVote() {
+      try {
+        const res = await api.getVote(id as string);
+        setVote(res.data);
+        if (res.data.hasVoted) {
+          setHasVoted(true);
+          setSelectedOption(res.data.userVoteOptionId);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Tatizo la seva');
+      } finally {
+        setPageLoading(false);
+      }
+    }
+    if (id) fetchVote();
+  }, [id]);
 
   const handleVote = async () => {
-    if (!selectedOption) return;
+    if (!selectedOption || !vote) return;
     setLoading(true);
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 1000));
-    setHasVoted(true);
-    setLoading(false);
-    setShowToast(true);
+    try {
+      const res = await api.castVote(vote.id, selectedOption);
+      setVote(res.data);
+      setHasVoted(true);
+      setToastMessage(res.message || 'Kura yako imehesabiwa! Asante.');
+      setToastType('success');
+      setShowToast(true);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Tatizo la seva');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (pageLoading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <TopBar title="Kura" showBack />
+        <div className="px-4 lg:px-6 py-4 space-y-4">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-10 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !vote) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <TopBar title="Kura" showBack />
+        <div className="px-4 lg:px-6 py-12 text-center">
+          <p className="text-neutral-700">{error || 'Kura haikupatikana.'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -57,7 +115,6 @@ export default function VoteDetailPage() {
         </button>
       } />
 
-      {/* Desktop back header */}
       <div className="hidden lg:flex items-center justify-between px-6 pt-6 pb-2">
         <h1 className="text-2xl font-bold text-neutral-900">Kura</h1>
         <div className="flex items-center gap-2">
@@ -74,7 +131,7 @@ export default function VoteDetailPage() {
         {/* Vote Info */}
         <Card>
           <div className="flex items-center gap-2 mb-3">
-            <Badge variant="orange">{vote.category}</Badge>
+            <Badge variant="orange">{vote.category.name}</Badge>
             {vote.isActive && (
               <Badge variant="success">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-semantic-success mr-1 animate-pulse-dot" />
@@ -83,10 +140,14 @@ export default function VoteDetailPage() {
             )}
           </div>
           <h1 className="text-xl font-bold text-neutral-900 mb-2">{vote.title}</h1>
-          <p className="text-sm text-neutral-700 mb-4">{vote.description}</p>
+          {vote.description && (
+            <p className="text-sm text-neutral-700 mb-4">{vote.description}</p>
+          )}
           <div className="flex items-center gap-4 text-xs text-neutral-500">
             <span className="flex items-center gap-1"><Users size={14} /> {vote.totalVotes.toLocaleString()} kura</span>
-            <span className="flex items-center gap-1"><Clock size={14} /> {vote.timeLeft}</span>
+            {vote.timeLeft && (
+              <span className="flex items-center gap-1"><Clock size={14} /> {vote.timeLeft}</span>
+            )}
             <span className="flex items-center gap-1"><Shield size={14} /> Siri</span>
           </div>
         </Card>
@@ -114,7 +175,6 @@ export default function VoteDetailPage() {
                   hasVoted && 'border-neutral-300 bg-neutral-0 cursor-default'
                 )}
               >
-                {/* Result bar background */}
                 {hasVoted && (
                   <div
                     className="absolute inset-y-0 left-0 bg-brand-primary-light/60 transition-all duration-1000 rounded-xl"
@@ -143,7 +203,7 @@ export default function VoteDetailPage() {
                   </div>
                   {hasVoted && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-neutral-500">{option.votes.toLocaleString()}</span>
+                      <span className="text-xs text-neutral-500">{option.voteCount.toLocaleString()}</span>
                       <span className="text-sm font-bold text-neutral-900">{option.percentage}%</span>
                     </div>
                   )}
@@ -185,8 +245,8 @@ export default function VoteDetailPage() {
       </div>
 
       <Toast
-        message="Kura yako imehesabiwa! Asante."
-        type="success"
+        message={toastMessage}
+        type={toastType}
         visible={showToast}
         onClose={() => setShowToast(false)}
       />

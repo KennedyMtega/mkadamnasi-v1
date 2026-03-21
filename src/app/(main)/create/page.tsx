@@ -11,6 +11,7 @@ import Chip from '@/components/ui/Chip';
 import Badge from '@/components/ui/Badge';
 import Toast from '@/components/ui/Toast';
 import { CATEGORIES, REGIONS_TZ } from '@/lib/constants';
+import { api } from '@/lib/api-client';
 
 type CreateType = 'vote' | 'rating' | null;
 type VoteType = 'poll' | 'versus' | 'ranking';
@@ -45,12 +46,44 @@ export default function CreatePage() {
     setOptions(newOptions);
   };
 
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
   const handleSubmit = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
-    setShowToast(true);
-    setTimeout(() => router.push('/'), 2000);
+    try {
+      if (createType === 'vote') {
+        await api.createVote({
+          title,
+          description: description || undefined,
+          type: voteType,
+          categoryId: category,
+          region: region || undefined,
+          options: options.filter(o => o.trim()),
+          isAnonymous,
+          duration,
+        });
+      } else {
+        await api.createRating({
+          title,
+          description: description || undefined,
+          categoryId: category,
+          entityName,
+          region: region || undefined,
+          isAnonymous,
+        });
+      }
+      setToastMessage(`${createType === 'vote' ? 'Kura' : 'Kadirio'} limechapishwa!`);
+      setToastType('success');
+      setShowToast(true);
+      setTimeout(() => router.push('/'), 2000);
+    } catch (err) {
+      setToastMessage(err instanceof Error ? err.message : 'Tatizo la seva. Jaribu tena.');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const canProceed = () => {
@@ -337,8 +370,8 @@ export default function CreatePage() {
       </div>
 
       <Toast
-        message={`${createType === 'vote' ? 'Kura' : 'Kadirio'} limechapishwa! 🎉`}
-        type="success"
+        message={toastMessage}
+        type={toastType}
         visible={showToast}
         onClose={() => setShowToast(false)}
       />

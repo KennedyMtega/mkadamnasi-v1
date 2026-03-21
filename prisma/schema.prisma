@@ -1,0 +1,644 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ──────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(uuid())
+  anonymousId    String    @unique @map("anonymous_id")
+  username       String?   @unique
+  email          String?   @unique
+  phone          String?   @unique
+  passwordHash   String?   @map("password_hash")
+  avatarUrl      String?   @map("avatar_url")
+  bio            String?
+  region         String?
+  language       String    @default("sw")
+
+  // Gamification
+  points         Int       @default(0)
+  level          Int       @default(1)
+  streak         Int       @default(0)
+  lastActiveAt   DateTime? @map("last_active_at")
+
+  // Flags
+  isPremium      Boolean   @default(false) @map("is_premium")
+  premiumUntil   DateTime? @map("premium_until")
+  isAdmin        Boolean   @default(false) @map("is_admin")
+  isBanned       Boolean   @default(false) @map("is_banned")
+  banReason      String?   @map("ban_reason")
+  isVerified     Boolean   @default(false) @map("is_verified")
+
+  // Device info for fraud detection
+  deviceFingerprint String? @map("device_fingerprint")
+  lastIpHash        String? @map("last_ip_hash")
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  votesCreated     Vote[]         @relation("VoteCreator")
+  voteEntries      VoteEntry[]
+  ratingsCreated   Rating[]       @relation("RatingCreator")
+  ratingEntries    RatingEntry[]
+  badges           UserBadge[]
+  activityLogs     ActivityLog[]
+  reports          Report[]       @relation("Reporter")
+  reportsAgainst   Report[]       @relation("ReportTarget")
+  referralsMade    Referral[]     @relation("Referrer")
+  referralsReceived Referral[]    @relation("Referred")
+  payments         Payment[]
+  businessClaims   BusinessClaim[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+// ─── Categories ────────────────────────────────────────────────────
+
+model Category {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String   // Swahili name
+  nameEn      String   @map("name_en") // English name
+  icon        String
+  color       String
+  description String?
+  position    Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  votes       Vote[]
+  ratings     Rating[]
+
+  @@map("categories")
+}
+
+// ─── Votes ─────────────────────────────────────────────────────────
+
+model Vote {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  type         VoteType   @default(POLL)
+  categoryId   String     @map("category_id")
+  creatorId    String     @map("creator_id")
+  region       String?
+  imageUrl     String?    @map("image_url")
+
+  // Control
+  isActive     Boolean    @default(true) @map("is_active")
+  isFeatured   Boolean    @default(false) @map("is_featured")
+  isPinned     Boolean    @default(false) @map("is_pinned")
+  isAnonymous  Boolean    @default(true) @map("is_anonymous")
+  isCurated    Boolean    @default(false) @map("is_curated") // Mkadamnasi "forever votes"
+  isPublic     Boolean    @default(true) @map("is_public")
+
+  // Stats
+  totalVotes   Int        @default(0) @map("total_votes")
+  viewCount    Int        @default(0) @map("view_count")
+  shareCount   Int        @default(0) @map("share_count")
+
+  // Scheduling
+  startDate    DateTime   @default(now()) @map("start_date")
+  endDate      DateTime?  @map("end_date")
+
+  // Location
+  latitude     Float?
+  longitude    Float?
+  locationName String?    @map("location_name")
+
+  // Moderation
+  status       ContentStatus @default(ACTIVE)
+  flagCount    Int        @default(0) @map("flag_count")
+
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  category     Category      @relation(fields: [categoryId], references: [id])
+  creator      User          @relation("VoteCreator", fields: [creatorId], references: [id])
+  options      VoteOption[]
+  entries      VoteEntry[]
+  reports      Report[]
+
+  @@index([categoryId])
+  @@index([creatorId])
+  @@index([status, isActive])
+  @@index([isFeatured])
+  @@index([isCurated])
+  @@index([totalVotes])
+  @@index([createdAt])
+  @@map("votes")
+}
+
+model VoteOption {
+  id          String   @id @default(uuid())
+  voteId      String   @map("vote_id")
+  title       String
+  description String?
+  imageUrl    String?  @map("image_url")
+  position    Int      @default(0)
+  voteCount   Int      @default(0) @map("vote_count")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vote        Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  entries     VoteEntry[]
+
+  @@index([voteId])
+  @@map("vote_options")
+}
+
+model VoteEntry {
+  id              String   @id @default(uuid())
+  voteId          String   @map("vote_id")
+  optionId        String   @map("option_id")
+  userId          String   @map("user_id")
+
+  // Fraud detection data
+  ipHash          String?  @map("ip_hash")
+  deviceFingerprint String? @map("device_fingerprint")
+  userAgent       String?  @map("user_agent")
+  latitude        Float?
+  longitude       Float?
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  vote            Vote       @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  option          VoteOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user            User       @relation(fields: [userId], references: [id])
+
+  @@unique([voteId, userId]) // One vote per user per poll
+  @@index([voteId])
+  @@index([userId])
+  @@map("vote_entries")
+}
+
+// ─── Ratings ───────────────────────────────────────────────────────
+
+model Rating {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  categoryId     String   @map("category_id")
+  creatorId      String   @map("creator_id")
+  entityName     String   @map("entity_name")
+  entityType     String   @map("entity_type") // business, person, place, service
+  region         String?
+  imageUrl       String?  @map("image_url")
+
+  // Stats
+  averageRating  Float    @default(0) @map("average_rating")
+  totalRatings   Int      @default(0) @map("total_ratings")
+  viewCount      Int      @default(0) @map("view_count")
+  shareCount     Int      @default(0) @map("share_count")
+
+  // Distribution cache (JSON: {1: count, 2: count, ...})
+  distribution   Json     @default("{\"1\":0,\"2\":0,\"3\":0,\"4\":0,\"5\":0}")
+
+  // Control
+  isActive       Boolean  @default(true) @map("is_active")
+  isFeatured     Boolean  @default(false) @map("is_featured")
+  isAnonymous    Boolean  @default(true) @map("is_anonymous")
+
+  // Location
+  latitude       Float?
+  longitude      Float?
+  locationName   String?  @map("location_name")
+
+  // Moderation
+  status         ContentStatus @default(ACTIVE)
+  flagCount      Int      @default(0) @map("flag_count")
+
+  // Business claim link
+  businessId     String?  @map("business_id")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  category       Category      @relation(fields: [categoryId], references: [id])
+  creator        User          @relation("RatingCreator", fields: [creatorId], references: [id])
+  entries        RatingEntry[]
+  business       Business?     @relation(fields: [businessId], references: [id])
+  reports        Report[]
+
+  @@index([categoryId])
+  @@index([creatorId])
+  @@index([averageRating])
+  @@index([totalRatings])
+  @@index([businessId])
+  @@map("ratings")
+}
+
+model RatingEntry {
+  id              String   @id @default(uuid())
+  ratingId        String   @map("rating_id")
+  userId          String   @map("user_id")
+  score           Int      // 1-5
+  review          String?
+  isAnonymous     Boolean  @default(true) @map("is_anonymous")
+
+  // Fraud detection
+  ipHash          String?  @map("ip_hash")
+  deviceFingerprint String? @map("device_fingerprint")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  rating          Rating   @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@unique([ratingId, userId])
+  @@index([ratingId])
+  @@index([userId])
+  @@map("rating_entries")
+}
+
+// ─── Businesses ────────────────────────────────────────────────────
+
+model Business {
+  id            String        @id @default(uuid())
+  name          String
+  description   String?
+  categorySlug  String        @map("category_slug")
+  region        String?
+  address       String?
+  phone         String?
+  email         String?
+  website       String?
+  logoUrl       String?       @map("logo_url")
+  coverUrl      String?       @map("cover_url")
+
+  // Location
+  latitude      Float?
+  longitude     Float?
+
+  // Verification
+  isVerified    Boolean       @default(false) @map("is_verified")
+  isClaimed     Boolean       @default(false) @map("is_claimed")
+
+  // Tier
+  tier          BusinessTier  @default(FREE)
+  tierExpiresAt DateTime?     @map("tier_expires_at")
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  claims        BusinessClaim[]
+  ratings       Rating[]
+
+  @@index([categorySlug])
+  @@index([region])
+  @@map("businesses")
+}
+
+model BusinessClaim {
+  id            String       @id @default(uuid())
+  businessId    String       @map("business_id")
+  userId        String       @map("user_id")
+  status        ClaimStatus  @default(PENDING)
+
+  // Verification docs
+  documentUrl   String?      @map("document_url")
+  notes         String?
+  reviewedBy    String?      @map("reviewed_by")
+  reviewedAt    DateTime?    @map("reviewed_at")
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  business      Business     @relation(fields: [businessId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@map("business_claims")
+}
+
+// ─── Gamification ──────────────────────────────────────────────────
+
+model Badge {
+  id            String      @id @default(uuid())
+  slug          String      @unique
+  name          String      // Swahili
+  nameEn        String      @map("name_en")
+  description   String
+  icon          String
+  category      String      // achievement, milestone, special
+  requirement   String      // Human-readable requirement
+  targetValue   Int         @map("target_value")
+  pointsReward  Int         @default(0) @map("points_reward")
+  isActive      Boolean     @default(true) @map("is_active")
+
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  userBadges    UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  badgeId   String   @map("badge_id")
+  earnedAt  DateTime @default(now()) @map("earned_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// ─── Referrals ─────────────────────────────────────────────────────
+
+model Referral {
+  id           String   @id @default(uuid())
+  referrerId   String   @map("referrer_id")
+  referredId   String   @map("referred_id")
+  code         String
+  pointsAwarded Int     @default(0) @map("points_awarded")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  referrer     User     @relation("Referrer", fields: [referrerId], references: [id])
+  referred     User     @relation("Referred", fields: [referredId], references: [id])
+
+  @@unique([referrerId, referredId])
+  @@index([code])
+  @@map("referrals")
+}
+
+// ─── Activity & Notifications ──────────────────────────────────────
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String   // vote_cast, rating_given, badge_earned, level_up, vote_created, etc.
+  title       String
+  description String?
+  metadata    Json?    // Additional data (vote_id, rating_id, badge_id, etc.)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("activity_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String   // vote_result, badge_earned, trending, system, marketing
+  title     String
+  body      String
+  data      Json?    // Deep link data
+  isRead    Boolean  @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── Reports & Moderation ──────────────────────────────────────────
+
+model Report {
+  id          String       @id @default(uuid())
+  reporterId  String       @map("reporter_id")
+  targetType  String       @map("target_type") // vote, rating, user
+  targetId    String       @map("target_id")
+  reason      String
+  description String?
+  status      ReportStatus @default(PENDING)
+  priority    Int          @default(0)
+
+  // Moderation
+  reviewedBy  String?      @map("reviewed_by")
+  reviewedAt  DateTime?    @map("reviewed_at")
+  resolution  String?
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+  targetUser  User?        @relation("ReportTarget", fields: [targetId], references: [id], map: "report_target_user")
+  vote        Vote?        @relation(fields: [targetId], references: [id], map: "report_target_vote")
+  rating      Rating?      @relation(fields: [targetId], references: [id], map: "report_target_rating")
+
+  @@index([status, priority])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+// ─── Payments ──────────────────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  type          String        // premium_subscription, business_tier, data_product
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("TZS")
+  method        String        // mpesa, tigopesa, airtelmoney, halopesa
+  status        PaymentStatus @default(PENDING)
+
+  // Provider reference
+  externalRef   String?       @map("external_ref")
+  phoneNumber   String?       @map("phone_number")
+
+  metadata      Json?
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ─── Marketing & A/B Tests ─────────────────────────────────────────
+
+model Campaign {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  type        String         // push, sms, email, in_app_banner
+  status      CampaignStatus @default(DRAFT)
+  targetAudience Json?       @map("target_audience") // Segment filters
+  content     Json           // Message template/content
+  schedule    Json?          // Scheduling config
+
+  // Stats
+  sentCount   Int            @default(0) @map("sent_count")
+  openCount   Int            @default(0) @map("open_count")
+  clickCount  Int            @default(0) @map("click_count")
+
+  startAt     DateTime?      @map("start_at")
+  endAt       DateTime?      @map("end_at")
+
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("campaigns")
+}
+
+model ABTest {
+  id            String       @id @default(uuid())
+  name          String
+  description   String?
+  status        ABTestStatus @default(DRAFT)
+  metric        String       // engagement, retention, conversion, click_rate
+  variants      Json         // Array of variant configs
+  results       Json?        // Calculated results
+  trafficSplit  Json?        @map("traffic_split") // Percentage per variant
+  sampleSize    Int          @default(0) @map("sample_size")
+
+  startAt       DateTime?    @map("start_at")
+  endAt         DateTime?    @map("end_at")
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@map("ab_tests")
+}
+
+// ─── Platform Config ───────────────────────────────────────────────
+
+model FeatureFlag {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  enabled   Boolean  @default(false)
+  regions   Json?    // Array of regions where enabled, null = all
+  segments  Json?    // User segments where enabled
+  metadata  Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+model AlgorithmConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  params    Json     // Algorithm parameters
+  isActive  Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("algorithm_configs")
+}
+
+// ─── Data Products ─────────────────────────────────────────────────
+
+model DataProduct {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  type        String   // category_insight, regional_report, sentiment_analysis
+  config      Json     // Data query/filter config
+  price       Decimal? @db.Decimal(10, 2)
+  currency    String   @default("TZS")
+  isPublished Boolean  @default(false) @map("is_published")
+  lastGenerated DateTime? @map("last_generated")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("data_products")
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String   @map("admin_id")
+  action    String   // create, update, delete, ban, approve, reject, etc.
+  target    String   // Table/entity name
+  targetId  String   @map("target_id")
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([target, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────
+
+enum VoteType {
+  POLL
+  VERSUS
+  RANKING
+  TOURNAMENT
+}
+
+enum ContentStatus {
+  ACTIVE
+  PENDING_REVIEW
+  FLAGGED
+  REMOVED
+  ARCHIVED
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum BusinessTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum ABTestStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
