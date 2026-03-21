@@ -1,55 +1,33 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { Bell, Vote, Star, Award, TrendingUp, Check } from 'lucide-react';
+import { Bell, Vote, Star, Award, TrendingUp, Check, FileText } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Badge from '@/components/ui/Badge';
-import Avatar from '@/components/ui/Avatar';
+import Skeleton from '@/components/ui/Skeleton';
+import { useActivity } from '@/features/activity/hooks/useActivity';
+import { formatDate } from '@/lib/utils';
 
-const mockActivities = [
-  {
-    id: '1', type: 'vote_result', title: 'Matokeo ya kura yamekamilika!',
-    description: 'Mgahawa Bora Dar 2026 — Akemi ameshinda!',
-    time: 'Dakika 30 zilizopita', read: false,
-    icon: Vote, iconColor: 'text-brand-primary', iconBg: 'bg-brand-primary-light',
-  },
-  {
-    id: '2', type: 'badge_earned', title: 'Beji mpya!',
-    description: 'Umepata beji ya "Mpiga Kura 100" 🏆',
-    time: 'Saa 2 zilizopita', read: false,
-    icon: Award, iconColor: 'text-semantic-warning', iconBg: 'bg-yellow-50',
-  },
-  {
-    id: '3', type: 'trending', title: 'Kura yako inatrendi!',
-    description: 'Saluni Bora Mwanza ina kura 500+ sasa',
-    time: 'Saa 5 zilizopita', read: true,
-    icon: TrendingUp, iconColor: 'text-semantic-success', iconBg: 'bg-emerald-50',
-  },
-  {
-    id: '4', type: 'rating_update', title: 'Kadirio jipya limeongezwa',
-    description: 'Mtu amekadiria Hyatt Regency (⭐5)',
-    time: 'Jana', read: true,
-    icon: Star, iconColor: 'text-semantic-warning', iconBg: 'bg-yellow-50',
-  },
-  {
-    id: '5', type: 'system', title: 'Karibu Mkadamnasi!',
-    description: 'Anza kupiga kura na kukadiria leo. Kura zako ni za siri.',
-    time: 'Siku 3 zilizopita', read: true,
-    icon: Bell, iconColor: 'text-semantic-info', iconBg: 'bg-blue-50',
-  },
-];
+const ACTIVITY_ICONS: Record<string, { icon: typeof Vote; color: string; bg: string }> = {
+  vote_cast: { icon: Vote, color: 'text-brand-primary', bg: 'bg-brand-primary-light' },
+  vote_created: { icon: Vote, color: 'text-brand-primary', bg: 'bg-brand-primary-light' },
+  rating_given: { icon: Star, color: 'text-semantic-warning', bg: 'bg-yellow-50' },
+  rating_created: { icon: Star, color: 'text-semantic-warning', bg: 'bg-yellow-50' },
+  badge_earned: { icon: Award, color: 'text-semantic-warning', bg: 'bg-yellow-50' },
+  level_up: { icon: TrendingUp, color: 'text-semantic-success', bg: 'bg-emerald-50' },
+  system: { icon: Bell, color: 'text-semantic-info', bg: 'bg-blue-50' },
+};
+
+const DEFAULT_ICON = { icon: FileText, color: 'text-neutral-500', bg: 'bg-neutral-100' };
 
 export default function ActivityPage() {
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [filter, setFilter] = useState<string | undefined>(undefined);
 
-  const filtered = filter === 'unread'
-    ? mockActivities.filter(a => !a.read)
-    : mockActivities;
-
-  const unreadCount = mockActivities.filter(a => !a.read).length;
+  const { activities, total, unreadNotifications, loading, error, hasMore, loadMore } = useActivity({
+    type: filter,
+  });
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -62,53 +40,87 @@ export default function ActivityPage() {
       <div className="hidden lg:flex items-center justify-between px-6 pt-6 pb-2">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-neutral-900">Shughuli</h1>
-          {unreadCount > 0 && (
-            <Badge variant="error">{unreadCount} mpya</Badge>
+          {unreadNotifications > 0 && (
+            <Badge variant="error">{unreadNotifications} mpya</Badge>
           )}
         </div>
         <button className="text-sm font-medium text-brand-primary hover:underline">Soma zote</button>
       </div>
 
       <div className="px-4 lg:px-6 py-4 space-y-3">
-        <div className="flex gap-2">
-          <Chip active={filter === 'all'} onClick={() => setFilter('all')}>
-            Zote ({mockActivities.length})
+        <div className="flex gap-2 flex-wrap">
+          <Chip active={!filter} onClick={() => setFilter(undefined)}>
+            Zote ({total})
           </Chip>
-          <Chip active={filter === 'unread'} onClick={() => setFilter('unread')}>
-            Hazijasomwa ({unreadCount})
+          <Chip active={filter === 'vote_cast'} onClick={() => setFilter(filter === 'vote_cast' ? undefined : 'vote_cast')}>
+            Kura
+          </Chip>
+          <Chip active={filter === 'rating_given'} onClick={() => setFilter(filter === 'rating_given' ? undefined : 'rating_given')}>
+            Makadirio
+          </Chip>
+          <Chip active={filter === 'badge_earned'} onClick={() => setFilter(filter === 'badge_earned' ? undefined : 'badge_earned')}>
+            Beji
           </Chip>
         </div>
 
-        {filtered.length === 0 ? (
+        {loading && activities.length === 0 ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-neutral-0 rounded-2xl border border-neutral-300 p-3 flex items-start gap-3">
+                <Skeleton variant="rectangular" className="w-10 h-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="w-48 h-4" />
+                  <Skeleton className="w-64 h-3" />
+                  <Skeleton className="w-24 h-3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <Card className="text-center py-8">
+            <p className="text-semantic-error font-medium">Tatizo limetokea</p>
+            <p className="text-sm text-neutral-500 mt-1">{error}</p>
+          </Card>
+        ) : activities.length === 0 ? (
           <Card className="text-center py-12">
             <Bell size={40} className="text-neutral-300 mx-auto mb-3" />
-            <p className="text-neutral-700 font-medium">Hakuna arifa mpya</p>
+            <p className="text-neutral-700 font-medium">Hakuna shughuli</p>
             <p className="text-sm text-neutral-500 mt-1">Shughuli zako zote zitaonekana hapa</p>
           </Card>
         ) : (
           <div className="space-y-2">
-            {filtered.map((item) => {
-              const Icon = item.icon;
+            {activities.map((item) => {
+              const iconConfig = ACTIVITY_ICONS[item.type] || DEFAULT_ICON;
+              const Icon = iconConfig.icon;
+
               return (
                 <Card
                   key={item.id}
                   padding="sm"
-                  className={`flex items-start gap-3 ${!item.read ? 'border-l-[3px] border-l-brand-primary' : ''}`}
+                  className="flex items-start gap-3"
                 >
-                  <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center shrink-0`}>
-                    <Icon size={20} className={item.iconColor} />
+                  <div className={`w-10 h-10 rounded-xl ${iconConfig.bg} flex items-center justify-center shrink-0`}>
+                    <Icon size={20} className={iconConfig.color} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
-                      {!item.read && <div className="w-2 h-2 rounded-full bg-brand-primary shrink-0" />}
-                    </div>
-                    <p className="text-sm text-neutral-700 mt-0.5">{item.description}</p>
-                    <p className="text-xs text-neutral-500 mt-1">{item.time}</p>
+                    <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
+                    {item.description && (
+                      <p className="text-sm text-neutral-700 mt-0.5">{item.description}</p>
+                    )}
+                    <p className="text-xs text-neutral-500 mt-1">{formatDate(item.createdAt)}</p>
                   </div>
                 </Card>
               );
             })}
+
+            {hasMore && (
+              <button
+                onClick={loadMore}
+                className="w-full py-3 text-sm font-medium text-brand-primary hover:bg-brand-primary-light rounded-xl transition-colors"
+              >
+                Pakia zaidi
+              </button>
+            )}
           </div>
         )}
       </div>

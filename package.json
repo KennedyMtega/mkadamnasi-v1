@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -29,9 +30,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
@@ -39,6 +42,7 @@
     "lucide-react": "^0.577.0",
     "next": "^16.2.1",
     "next-auth": "^5.0.0-beta.30",
+    "pg": "^8.20.0",
     "postcss": "^8.5.8",
     "prisma": "^7.5.0",
     "react": "^19.2.4",
@@ -49,6 +53,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/uuid": "^10.0.0"
+    "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^11.0.0"
   }
 }

@@ -1,36 +1,116 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Users, Star, Clock, Filter } from 'lucide-react';
+import { Users, Star, Clock } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import Badge from '@/components/ui/Badge';
-import StarRating from '@/components/ui/StarRating';
+import Skeleton from '@/components/ui/Skeleton';
 import { CATEGORIES } from '@/lib/constants';
+import { api } from '@/lib/api-client';
+import { formatNumber } from '@/lib/utils';
 
-const mockItems = [
-  { id: '1', type: 'vote' as const, title: 'Mgahawa Bora Dar es Salaam 2026', participants: 12453, timeLeft: 'Siku 3', isActive: true },
-  { id: '2', type: 'rating' as const, title: 'Hyatt Regency Dar', participants: 2341, rating: 4.7, isActive: true },
-  { id: '3', type: 'vote' as const, title: 'Pizza Bora - Dar es Salaam', participants: 3456, timeLeft: 'Siku 7', isActive: true },
-  { id: '4', type: 'rating' as const, title: 'Samaki Samaki Restaurant', participants: 1890, rating: 4.2, isActive: true },
-  { id: '5', type: 'vote' as const, title: 'Cafe Bora ya Kusoma', participants: 2100, timeLeft: 'Imeisha', isActive: false },
-];
+interface VoteItem {
+  id: string;
+  title: string;
+  totalVotes: number;
+  isActive: boolean;
+  endDate: string | null;
+  createdAt: string;
+}
+
+interface RatingItem {
+  id: string;
+  title: string;
+  entityName: string;
+  totalRatings: number;
+  averageRating: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+type CombinedItem = {
+  id: string;
+  type: 'vote' | 'rating';
+  title: string;
+  participants: number;
+  isActive: boolean;
+  timeLeft?: string;
+  rating?: number;
+  createdAt: string;
+};
+
+function getTimeLeft(endDate: string | null): string | null {
+  if (!endDate) return null;
+  const diff = new Date(endDate).getTime() - Date.now();
+  if (diff <= 0) return 'Imeisha';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days > 0) return `Siku ${days}`;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  return `Saa ${hours}`;
+}
 
 export default function CategoryDetailPage() {
   const { id } = useParams();
   const [filter, setFilter] = useState<'all' | 'votes' | 'ratings'>('all');
   const [sort, setSort] = useState<'popular' | 'newest'>('popular');
+  const [items, setItems] = useState<CombinedItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const category = CATEGORIES.find(c => c.id === id);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const [votesRes, ratingsRes] = await Promise.all([
+          api.getVotes({ categoryId: id as string }).catch(() => ({ data: [] })),
+          api.getRatings({ categoryId: id as string }).catch(() => ({ data: [] })),
+        ]);
+
+        const voteItems: CombinedItem[] = (votesRes.data || []).map((v: VoteItem) => ({
+          id: v.id,
+          type: 'vote' as const,
+          title: v.title,
+          participants: v.totalVotes,
+          isActive: v.isActive,
+          timeLeft: getTimeLeft(v.endDate),
+          createdAt: v.createdAt,
+        }));
+
+        const ratingItems: CombinedItem[] = (ratingsRes.data || []).map((r: RatingItem) => ({
+          id: r.id,
+          type: 'rating' as const,
+          title: r.entityName || r.title,
+          participants: r.totalRatings,
+          isActive: r.isActive,
+          rating: r.averageRating,
+          createdAt: r.createdAt,
+        }));
+
+        setItems([...voteItems, ...ratingItems]);
+      } catch {
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [id]);
+
   if (!category) return <div className="p-8 text-center text-neutral-500">Kategoria haijapatikana</div>;
 
-  const filtered = mockItems.filter(item => {
+  const filtered = items.filter(item => {
     if (filter === 'votes') return item.type === 'vote';
     if (filter === 'ratings') return item.type === 'rating';
     return true;
+  }).sort((a, b) => {
+    if (sort === 'popular') return b.participants - a.participants;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   return (
@@ -47,7 +127,6 @@ export default function CategoryDetailPage() {
         </div>
       </div>
 
-      {/* Mobile category header */}
       <div className="lg:hidden px-4 pt-4">
         <div className="flex items-center gap-3 mb-3">
           <span className="text-3xl">{category.icon}</span>
@@ -59,7 +138,6 @@ export default function CategoryDetailPage() {
       </div>
 
       <div className="px-4 lg:px-6 py-3 space-y-3">
-        {/* Filters */}
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             <Chip active={filter === 'all'} onClick={() => setFilter('all')}>Zote</Chip>
@@ -72,37 +150,46 @@ export default function CategoryDetailPage() {
           </div>
         </div>
 
-        {/* Results */}
-        <div className="space-y-2.5">
-          {filtered.map((item) => (
-            <Link key={item.id} href={`/${item.type === 'vote' ? 'vote' : 'rate'}/${item.id}`}>
-              <Card className="hover:border-brand-primary transition-colors">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Badge variant={item.type === 'vote' ? 'orange' : 'info'} size="sm">
-                    {item.type === 'vote' ? 'Kura' : 'Kadirio'}
-                  </Badge>
-                  {item.isActive ? (
-                    <Badge variant="success" size="sm">Hai</Badge>
-                  ) : (
-                    <Badge size="sm">Imeisha</Badge>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">{item.title}</h3>
-                <div className="flex items-center gap-3 text-xs text-neutral-500">
-                  <span className="flex items-center gap-1"><Users size={12} /> {item.participants.toLocaleString()}</span>
-                  {item.type === 'vote' && item.timeLeft && (
-                    <span className="flex items-center gap-1"><Clock size={12} /> {item.timeLeft}</span>
-                  )}
-                  {item.type === 'rating' && item.rating && (
-                    <span className="flex items-center gap-1">
-                      <Star size={12} className="text-semantic-warning" fill="var(--color-semantic-warning)" /> {item.rating}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <div className="space-y-2.5">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-neutral-500">Hakuna matokeo katika kategoria hii bado.</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filtered.map((item) => (
+              <Link key={`${item.type}-${item.id}`} href={`/${item.type === 'vote' ? 'vote' : 'rate'}/${item.id}`}>
+                <Card className="hover:border-brand-primary transition-colors">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Badge variant={item.type === 'vote' ? 'orange' : 'info'} size="sm">
+                      {item.type === 'vote' ? 'Kura' : 'Kadirio'}
+                    </Badge>
+                    {item.isActive ? (
+                      <Badge variant="success" size="sm">Hai</Badge>
+                    ) : (
+                      <Badge size="sm">Imeisha</Badge>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">{item.title}</h3>
+                  <div className="flex items-center gap-3 text-xs text-neutral-500">
+                    <span className="flex items-center gap-1"><Users size={12} /> {formatNumber(item.participants)}</span>
+                    {item.type === 'vote' && item.timeLeft && (
+                      <span className="flex items-center gap-1"><Clock size={12} /> {item.timeLeft}</span>
+                    )}
+                    {item.type === 'rating' && item.rating !== undefined && (
+                      <span className="flex items-center gap-1">
+                        <Star size={12} className="text-semantic-warning" fill="var(--color-semantic-warning)" /> {item.rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

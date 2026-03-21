@@ -116,4 +116,73 @@ export const api = {
     });
     return handleResponse(res);
   },
+
+  // User Profile
+  async getUserProfile() {
+    const res = await fetch(`${BASE_URL}/api/users`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  async updateUserProfile(data: {
+    username?: string;
+    bio?: string;
+    region?: string;
+    language?: string;
+  }) {
+    const res = await fetch(`${BASE_URL}/api/users`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  async getUserStats() {
+    const res = await fetch(`${BASE_URL}/api/users/stats`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  // Search
+  async search(params: {
+    q: string;
+    type?: 'vote' | 'rating' | 'all';
+    categoryId?: string;
+    region?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+    searchParams.set('q', params.q);
+    if (params.type) searchParams.set('type', params.type);
+    if (params.categoryId) searchParams.set('categoryId', params.categoryId);
+    if (params.region) searchParams.set('region', params.region);
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.offset) searchParams.set('offset', String(params.offset));
+
+    const res = await fetch(`${BASE_URL}/api/search?${searchParams}`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  // Activity
+  async getActivity(params?: {
+    type?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.type) searchParams.set('type', params.type);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+
+    const res = await fetch(`${BASE_URL}/api/activity?${searchParams}`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
 };

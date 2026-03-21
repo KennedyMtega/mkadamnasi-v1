@@ -1,26 +1,29 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TrendingUp, ChevronRight, Star, Users, Shield } from 'lucide-react';
 import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
 import SearchInput from '@/components/ui/SearchInput';
 import { CATEGORIES } from '@/lib/constants';
 import { FeaturedPoll, TrendingVoteCard, TopRatingCard } from '@/features/home';
+import { api } from '@/lib/api-client';
 
-// Mock data - will be replaced with Supabase queries
-const trendingVotes = [
+// Fallback mock data for when API is unavailable
+const fallbackVotes = [
   { id: '1', title: 'Mgahawa Bora Dar es Salaam 2026', category: 'Migahawa', votes: 12453, isHot: true, timeLeft: 'Siku 3 zimebaki' },
   { id: '2', title: 'Mwanafunzi Bora UDSM Semester Hii', category: 'Shule', votes: 8921, isHot: true, timeLeft: 'Siku 5 zimebaki' },
   { id: '3', title: 'Boda Boda vs Bajaji - Usafiri Bora?', category: 'Usafiri', votes: 6234, isHot: false, timeLeft: 'Wiki 1 imebaki' },
   { id: '4', title: 'Saluni Bora Mwanza', category: 'Saluni', votes: 4122, isHot: false, timeLeft: 'Siku 10 zimebaki' },
 ];
 
-const topRatings = [
+const fallbackRatings = [
   { id: '1', name: 'Hyatt Regency Dar', category: 'Migahawa', rating: 4.7, totalRatings: 2341 },
   { id: '2', name: 'Mlimani City Mall', category: 'Maduka', rating: 4.3, totalRatings: 5672 },
   { id: '3', name: 'KKKT Azania', category: 'Huduma', rating: 4.8, totalRatings: 891 },
 ];
 
-const featuredPoll = {
+const fallbackFeatured = {
   id: 'featured-1',
   title: 'Jiji Bora la Kuishi Tanzania 2026',
   description: 'Piga kura kwa jiji unalolipenda zaidi kuishi Tanzania',
@@ -33,7 +36,81 @@ const featuredPoll = {
   ],
 };
 
+interface TrendingVote {
+  id: string;
+  title: string;
+  category: string;
+  votes: number;
+  isHot: boolean;
+  timeLeft: string;
+}
+
+interface TopRating {
+  id: string;
+  name: string;
+  category: string;
+  rating: number;
+  totalRatings: number;
+}
+
 export default function HomePage() {
+  const [trendingVotes, setTrendingVotes] = useState<TrendingVote[]>(fallbackVotes);
+  const [topRatings, setTopRatings] = useState<TopRating[]>(fallbackRatings);
+  const [featuredPoll, setFeaturedPoll] = useState(fallbackFeatured);
+  const [stats, setStats] = useState({ users: '234K+', ratings: '1.2M+', votes: '890K+' });
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [votesRes, ratingsRes] = await Promise.allSettled([
+          api.getVotes({ limit: '4' }),
+          api.getRatings({ limit: '3' }),
+        ]);
+
+        if (votesRes.status === 'fulfilled' && votesRes.value.data?.length > 0) {
+          const apiVotes = votesRes.value.data;
+          setTrendingVotes(apiVotes.map((v: { id: string; title: string; category?: { name: string }; totalVotes: number; isFeatured: boolean; endDate: string | null }, i: number) => ({
+            id: v.id,
+            title: v.title,
+            category: v.category?.name || 'Mengine',
+            votes: v.totalVotes,
+            isHot: i < 2,
+            timeLeft: v.endDate ? getTimeLeftText(v.endDate) : 'Hai',
+          })));
+
+          // Use first featured vote as the featured poll
+          const featured = apiVotes.find((v: { isFeatured: boolean }) => v.isFeatured) || apiVotes[0];
+          if (featured?.options?.length > 0) {
+            setFeaturedPoll({
+              id: featured.id,
+              title: featured.title,
+              description: featured.description || '',
+              votes: featured.totalVotes,
+              options: featured.options.slice(0, 4).map((o: { title: string; percentage: number; voteCount: number }) => ({
+                name: o.title,
+                percentage: o.percentage,
+                votes: o.voteCount,
+              })),
+            });
+          }
+        }
+
+        if (ratingsRes.status === 'fulfilled' && ratingsRes.value.data?.length > 0) {
+          setTopRatings(ratingsRes.value.data.map((r: { id: string; entityName: string; title: string; category?: { name: string }; averageRating: number; totalRatings: number }) => ({
+            id: r.id,
+            name: r.entityName || r.title,
+            category: r.category?.name || 'Mengine',
+            rating: r.averageRating,
+            totalRatings: r.totalRatings,
+          })));
+        }
+      } catch {
+        // Fallback data already set
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Mobile Header */}
@@ -56,7 +133,7 @@ export default function HomePage() {
       <div className="hidden lg:block px-6 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900">Karibu, Mkadamnasi! 👋</h1>
+            <h1 className="text-3xl font-bold text-neutral-900">Karibu, Mkadamnasi!</h1>
             <p className="text-neutral-700 mt-1">Gundua kura na makadirio yanayotrendi Tanzania</p>
           </div>
           <div className="w-96">
@@ -70,15 +147,15 @@ export default function HomePage() {
         <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1">
           <div className="flex items-center gap-2 px-3 py-2 bg-neutral-0 rounded-xl border border-neutral-300 shrink-0">
             <Users size={16} className="text-brand-primary" />
-            <span className="text-xs font-semibold text-neutral-900">234K+ Watumiaji</span>
+            <span className="text-xs font-semibold text-neutral-900">{stats.users} Watumiaji</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-neutral-0 rounded-xl border border-neutral-300 shrink-0">
             <Star size={16} className="text-semantic-warning" />
-            <span className="text-xs font-semibold text-neutral-900">1.2M+ Makadirio</span>
+            <span className="text-xs font-semibold text-neutral-900">{stats.ratings} Makadirio</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-neutral-0 rounded-xl border border-neutral-300 shrink-0">
             <TrendingUp size={16} className="text-semantic-success" />
-            <span className="text-xs font-semibold text-neutral-900">890K+ Kura</span>
+            <span className="text-xs font-semibold text-neutral-900">{stats.votes} Kura</span>
           </div>
         </div>
       </div>
@@ -117,7 +194,7 @@ export default function HomePage() {
       {/* Trending Votes */}
       <div className="px-4 lg:px-6 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-neutral-900">🔥 Kura Zinazotrendi</h2>
+          <h2 className="text-lg font-bold text-neutral-900">Kura Zinazotrendi</h2>
           <Link href="/trending" className="text-sm font-semibold text-brand-primary flex items-center gap-0.5">
             Zote <ChevronRight size={16} />
           </Link>
@@ -141,7 +218,7 @@ export default function HomePage() {
       {/* Top Ratings */}
       <div className="px-4 lg:px-6 mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-neutral-900">⭐ Makadirio ya Juu</h2>
+          <h2 className="text-lg font-bold text-neutral-900">Makadirio ya Juu</h2>
           <Link href="/ratings" className="text-sm font-semibold text-brand-primary flex items-center gap-0.5">
             Zote <ChevronRight size={16} />
           </Link>
@@ -176,4 +253,14 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+function getTimeLeftText(endDate: string): string {
+  const diff = new Date(endDate).getTime() - Date.now();
+  if (diff <= 0) return 'Imeisha';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days > 7) return `Wiki ${Math.floor(days / 7)} zimebaki`;
+  if (days > 0) return `Siku ${days} zimebaki`;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  return `Saa ${hours} zimebaki`;
 }
