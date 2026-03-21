@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser, hashIp, getClientIp } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { submitRatingSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
+import { createRatingMilestoneNotification } from '@/lib/notifications';
 
 /**
  * POST /api/ratings/[id]/submit - Submit a rating (1-5 stars + optional review)

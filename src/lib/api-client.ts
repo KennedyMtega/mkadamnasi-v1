@@ -169,6 +169,33 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Notifications
+  async getNotifications(params?: Record<string, string>) {
+    const searchParams = new URLSearchParams(params);
+    const res = await fetch(`${BASE_URL}/api/notifications?${searchParams}`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  async markNotificationsRead(ids: string[]) {
+    const res = await fetch(`${BASE_URL}/api/notifications`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ ids }),
+    });
+    return handleResponse(res);
+  },
+
+  async markAllNotificationsRead() {
+    const res = await fetch(`${BASE_URL}/api/notifications`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ all: true }),
+    });
+    return handleResponse(res);
+  },
+
   // Activity
   async getActivity(params?: {
     type?: string;

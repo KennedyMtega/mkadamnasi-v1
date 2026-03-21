@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { TrendingUp, Inbox } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Tabs from '@/components/ui/Tabs';
@@ -42,7 +43,9 @@ const TABS = [
 const PAGE_SIZE = 10;
 
 export default function TrendingPage() {
-  const [activeTab, setActiveTab] = useState('votes');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'ratings' ? 'ratings' : 'votes';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [votes, setVotes] = useState<VoteItem[]>([]);
   const [ratings, setRatings] = useState<RatingItem[]>([]);
   const [loading, setLoading] = useState(true);

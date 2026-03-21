@@ -8,6 +8,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import { CATEGORIES } from '@/lib/constants';
 import { FeaturedPoll, TrendingVoteCard, TopRatingCard } from '@/features/home';
 import { api } from '@/lib/api-client';
+import { formatNumber } from '@/lib/utils';
 
 // Fallback mock data for when API is unavailable
 const fallbackVotes = [
@@ -57,15 +58,25 @@ export default function HomePage() {
   const [trendingVotes, setTrendingVotes] = useState<TrendingVote[]>(fallbackVotes);
   const [topRatings, setTopRatings] = useState<TopRating[]>(fallbackRatings);
   const [featuredPoll, setFeaturedPoll] = useState(fallbackFeatured);
-  const [stats, setStats] = useState({ users: '234K+', ratings: '1.2M+', votes: '890K+' });
+  const [stats, setStats] = useState({ users: '...', ratings: '...', votes: '...' });
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [votesRes, ratingsRes] = await Promise.allSettled([
+        const [votesRes, ratingsRes, statsRes] = await Promise.allSettled([
           api.getVotes({ limit: '4' }),
           api.getRatings({ limit: '3' }),
+          fetch('/api/stats').then(r => r.json()),
         ]);
+
+        if (statsRes.status === 'fulfilled' && statsRes.value.data) {
+          const s = statsRes.value.data;
+          setStats({
+            users: formatNumber(s.totalUsers) + '+',
+            ratings: formatNumber(s.totalRatings) + '+',
+            votes: formatNumber(s.totalVoteEntries) + '+',
+          });
+        }
 
         if (votesRes.status === 'fulfilled' && votesRes.value.data?.length > 0) {
           const apiVotes = votesRes.value.data;
@@ -219,7 +230,7 @@ export default function HomePage() {
       <div className="px-4 lg:px-6 mb-8">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-neutral-900">Makadirio ya Juu</h2>
-          <Link href="/ratings" className="text-sm font-semibold text-brand-primary flex items-center gap-0.5">
+          <Link href="/trending?tab=ratings" className="text-sm font-semibold text-brand-primary flex items-center gap-0.5">
             Zote <ChevronRight size={16} />
           </Link>
         </div>

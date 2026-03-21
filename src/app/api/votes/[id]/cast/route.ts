@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser, hashIp, getClientIp } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { castVoteSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
+import { createVoteMilestoneNotification } from '@/lib/notifications';
 
 /**
  * POST /api/votes/[id]/cast - Cast a vote on a poll
@@ -131,6 +132,17 @@ export async function POST(
         data: { points: { increment: 2 } },
       }),
     ]);
+
+    // Notify vote creator every 10th vote (non-blocking)
+    const newTotalVotes = vote.totalVotes + 1;
+    if (newTotalVotes % 10 === 0 && vote.creatorId !== user.id) {
+      createVoteMilestoneNotification(
+        vote.creatorId,
+        vote.title,
+        voteId,
+        newTotalVotes
+      ).catch((err) => console.error('Failed to create vote milestone notification:', err));
+    }
 
     // Fetch updated vote with results
     const updatedVote = await prisma.vote.findUnique({
