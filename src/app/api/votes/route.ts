@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createVoteSchema } from '@/lib/validations';
+import { checkAndAwardBadges } from '@/lib/badges';
 
 /**
  * GET /api/votes - List votes with filtering

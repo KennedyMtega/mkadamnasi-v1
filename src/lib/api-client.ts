@@ -169,6 +169,31 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Badges
+  async getBadges() {
+    const res = await fetch(`${BASE_URL}/api/badges`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  // Referrals
+  async getReferralStats() {
+    const res = await fetch(`${BASE_URL}/api/referrals`, {
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  async claimReferral(code: string) {
+    const res = await fetch(`${BASE_URL}/api/referrals`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ code }),
+    });
+    return handleResponse(res);
+  },
+
   // Notifications
   async getNotifications(params?: Record<string, string>) {
     const searchParams = new URLSearchParams(params);

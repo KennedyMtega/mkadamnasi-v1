@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { TrendingUp, ChevronRight, Star, Users, Shield } from 'lucide-react';
+import { TrendingUp, ChevronRight, Star, Users, Shield, Award, X } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import SearchInput from '@/components/ui/SearchInput';
 import { CATEGORIES } from '@/lib/constants';
 import { FeaturedPoll, TrendingVoteCard, TopRatingCard } from '@/features/home';
 import { api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/utils';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 // Fallback mock data for when API is unavailable
 const fallbackVotes = [
@@ -55,6 +56,8 @@ interface TopRating {
 }
 
 export default function HomePage() {
+  const { isAnonymous } = useAuth();
+  const [showUpgradeBanner, setShowUpgradeBanner] = useState(true);
   const [trendingVotes, setTrendingVotes] = useState<TrendingVote[]>(fallbackVotes);
   const [topRatings, setTopRatings] = useState<TopRating[]>(fallbackRatings);
   const [featuredPoll, setFeaturedPoll] = useState(fallbackFeatured);
@@ -170,6 +173,31 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Upgrade Banner for Anonymous Users */}
+      {isAnonymous && showUpgradeBanner && (
+        <div className="px-4 lg:px-6 mb-4">
+          <div className="relative bg-gradient-to-r from-brand-primary/10 to-purple-50 rounded-2xl border border-brand-primary/20 p-3">
+            <button
+              onClick={() => setShowUpgradeBanner(false)}
+              className="absolute top-2 right-2 p-1 rounded-lg hover:bg-neutral-900/5 transition-colors"
+              aria-label="Funga"
+            >
+              <X size={14} className="text-neutral-500" />
+            </button>
+            <Link href="/upgrade" className="flex items-center gap-3 pr-6">
+              <div className="w-9 h-9 rounded-xl bg-brand-primary/20 flex items-center justify-center shrink-0">
+                <Award size={18} className="text-brand-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-900">Jiunge kupata beji na pointi zaidi!</p>
+                <p className="text-xs text-neutral-600 mt-0.5">Boresha akaunti yako bure</p>
+              </div>
+              <ChevronRight size={16} className="text-brand-primary shrink-0" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Featured Poll */}
       <div className="px-4 lg:px-6 mb-6">

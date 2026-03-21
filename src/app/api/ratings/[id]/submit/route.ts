@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { submitRatingSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { createRatingMilestoneNotification } from '@/lib/notifications';
+import { checkAndAwardBadges } from '@/lib/badges';
 
 /**
  * POST /api/ratings/[id]/submit - Submit a rating (1-5 stars + optional review)
@@ -127,6 +128,22 @@ export async function POST(
       }),
     ]);
 
+    // Notify rating creator every 5th rating (non-blocking)
+    if (newTotalRatings % 5 === 0 && rating.creatorId !== user.id) {
+      createRatingMilestoneNotification(
+        rating.creatorId,
+        rating.title,
+        ratingId,
+        newTotalRatings
+      ).catch((err) => console.error('Failed to create rating milestone notification:', err));
+    }
+
+    // Check and award badges (non-blocking)
+    const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
+      console.error('Failed to check badges:', err);
+      return [] as string[];
+    });
+
     return NextResponse.json({
       data: {
         averageRating: newAverageRating,
@@ -135,6 +152,7 @@ export async function POST(
         hasRated: true,
         userScore: score,
       },
+      newBadges,
       message: 'Kadirio lako limehifadhiwa! Asante.',
     });
   } catch (error) {

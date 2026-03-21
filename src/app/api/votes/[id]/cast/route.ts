@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { castVoteSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { createVoteMilestoneNotification } from '@/lib/notifications';
+import { checkAndAwardBadges } from '@/lib/badges';
 
 /**
  * POST /api/votes/[id]/cast - Cast a vote on a poll
@@ -159,6 +160,12 @@ export async function POST(
         : 0,
     }));
 
+    // Check and award badges (non-blocking)
+    const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
+      console.error('Failed to check badges:', err);
+      return [] as string[];
+    });
+
     return NextResponse.json({
       data: {
         ...updatedVote,
@@ -166,6 +173,7 @@ export async function POST(
         hasVoted: true,
         userVoteOptionId: optionId,
       },
+      newBadges,
       message: 'Kura yako imehesabiwa! Asante.',
     });
   } catch (error) {

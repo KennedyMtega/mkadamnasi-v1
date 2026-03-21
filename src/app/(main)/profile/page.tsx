@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Shield, Award, TrendingUp, Star, Vote, Edit, ChevronRight, Share2, Crown } from 'lucide-react';
+import Link from 'next/link';
+import { Shield, Award, TrendingUp, Star, Vote, Edit, ChevronRight, Share2, Crown, UserPlus } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -11,12 +12,14 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import Chip from '@/components/ui/Chip';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import { useProfile } from '@/features/profile/hooks/useProfile';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useActivity } from '@/features/activity/hooks/useActivity';
 import { formatDate } from '@/lib/utils';
 
 export default function ProfilePage() {
   const [tab, setTab] = useState<'overview' | 'badges' | 'history'>('overview');
   const { profile, stats, loading, error } = useProfile();
+  const { isAnonymous } = useAuth();
   const { activities } = useActivity({ limit: 5 });
 
   const username = profile?.username || 'Mtumiaji Siri';
@@ -51,6 +54,24 @@ export default function ProfilePage() {
           </Card>
         ) : (
           <>
+            {/* Upgrade CTA for anonymous users */}
+            {isAnonymous && (
+              <Link href="/upgrade">
+                <Card className="bg-gradient-to-r from-brand-primary to-brand-primary-dark border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-0/20 flex items-center justify-center shrink-0">
+                      <UserPlus size={20} className="text-neutral-0" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-neutral-0">Boresha Akaunti</p>
+                      <p className="text-xs text-neutral-0/80 mt-0.5">Jiunge ili kuhifadhi maendeleo yako na kupata beji zaidi</p>
+                    </div>
+                    <ChevronRight size={18} className="text-neutral-0/70 shrink-0" />
+                  </div>
+                </Card>
+              </Link>
+            )}
+
             {/* Profile Card */}
             <Card elevated>
               <div className="flex items-center gap-4 mb-4">
