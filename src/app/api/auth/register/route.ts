@@ -3,59 +3,33 @@ import { hash } from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { registerSchema } from '@/lib/validations';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 5 requests per minute
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const { success: rateLimitOk } = rateLimit(`register:${ip}`, 5, 60000);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { error: 'Maombi mengi sana. Tafadhali subiri.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { email, phone, password, username } = body;
 
-    // Validate: at least email or phone required
-    if (!email && !phone) {
+    // Zod validation
+    const parsed = registerSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Barua pepe au nambari ya simu inahitajika' },
+        { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    // Validate password
-    if (!password || password.length < 6) {
-      return NextResponse.json(
-        { error: 'Nywila lazima iwe na herufi 6 au zaidi' },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format if provided
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: 'Barua pepe si sahihi' },
-        { status: 400 }
-      );
-    }
-
-    // Validate phone format if provided (Tanzania: +255 or 0 prefix)
-    if (phone && !/^(\+?255|0)\d{9}$/.test(phone.replace(/\s/g, ''))) {
-      return NextResponse.json(
-        { error: 'Nambari ya simu si sahihi' },
-        { status: 400 }
-      );
-    }
-
-    // Validate username if provided
-    if (username) {
-      if (username.length < 3 || username.length > 30) {
-        return NextResponse.json(
-          { error: 'Jina la mtumiaji lazima liwe herufi 3-30' },
-          { status: 400 }
-        );
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        return NextResponse.json(
-          { error: 'Jina la mtumiaji linaweza kuwa na herufi, nambari, na _ tu' },
-          { status: 400 }
-        );
-      }
-    }
+    const { email, phone, password, username } = parsed.data;
 
     // Check for duplicates
     const duplicateChecks = [];

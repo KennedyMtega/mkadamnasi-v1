@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser, hashIp, getClientIp } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { submitRatingSchema } from '@/lib/validations';
+import { rateLimit } from '@/lib/rate-limit';
 
 /**
  * POST /api/ratings/[id]/submit - Submit a rating (1-5 stars + optional review)
@@ -12,6 +14,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting: 30 requests per minute
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const { success: rateLimitOk } = rateLimit(`submit-rating:${ip}`, 30, 60000);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { error: 'Maombi mengi sana. Tafadhali subiri.' },
+        { status: 429 }
+      );
+    }
+
     const { id: ratingId } = await params;
     const user = await getOrCreateAnonymousUser(request);
 
@@ -23,23 +35,17 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { score, review } = body;
 
-    // Validate score
-    if (!score || typeof score !== 'number' || score < 1 || score > 5) {
+    // Zod validation
+    const parsed = submitRatingSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Kadirio lazima liwe kati ya 1 na 5.' },
+        { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    // Validate review length
-    if (review && review.length > 500) {
-      return NextResponse.json(
-        { error: 'Maoni hayawezi kuzidi herufi 500.' },
-        { status: 400 }
-      );
-    }
+    const { score, review } = parsed.data;
 
     // Verify rating exists and is active
     const rating = await prisma.rating.findUnique({

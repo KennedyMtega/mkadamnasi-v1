@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser, hashIp, getClientIp } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { castVoteSchema } from '@/lib/validations';
+import { rateLimit } from '@/lib/rate-limit';
 
 /**
  * POST /api/votes/[id]/cast - Cast a vote on a poll
@@ -12,6 +14,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting: 30 requests per minute
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const { success: rateLimitOk } = rateLimit(`cast-vote:${ip}`, 30, 60000);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { error: 'Maombi mengi sana. Tafadhali subiri.' },
+        { status: 429 }
+      );
+    }
+
     const { id: voteId } = await params;
     const user = await getOrCreateAnonymousUser(request);
 
@@ -23,14 +35,17 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { optionId } = body;
 
-    if (!optionId) {
+    // Zod validation
+    const parsed = castVoteSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Chaguo linahitajika.' },
+        { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
+
+    const { optionId } = parsed.data;
 
     // Verify vote exists and is active
     const vote = await prisma.vote.findUnique({

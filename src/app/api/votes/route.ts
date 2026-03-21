@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { createVoteSchema } from '@/lib/validations';
 
 /**
  * GET /api/votes - List votes with filtering
@@ -84,60 +85,36 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, type, categoryId, region, options, isAnonymous, duration } = body;
 
-    // Validation
-    if (!title || title.length < 3) {
+    // Zod validation
+    const parsed = createVoteSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Kichwa lazima kiwe na herufi 3 au zaidi.' },
+        { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    if (!categoryId) {
-      return NextResponse.json(
-        { error: 'Kategoria inahitajika.' },
-        { status: 400 }
-      );
-    }
-
-    if (!options || !Array.isArray(options) || options.filter((o: string) => o.trim()).length < 2) {
-      return NextResponse.json(
-        { error: 'Chaguzi 2 au zaidi zinahitajika.' },
-        { status: 400 }
-      );
-    }
-
-    const filteredOptions = options.filter((o: string) => o.trim());
-    if (filteredOptions.length > 10) {
-      return NextResponse.json(
-        { error: 'Chaguzi haziwezi kuzidi 10.' },
-        { status: 400 }
-      );
-    }
+    const { title, description, type, categoryId, region, options, isAnonymous, endDate: endDateStr } = parsed.data;
 
     const voteId = uuidv4();
-    const endDate = duration
-      ? new Date(Date.now() + parseInt(duration) * 24 * 60 * 60 * 1000)
-      : null;
-
-    const voteType = type?.toUpperCase() || 'POLL';
+    const endDate = endDateStr ? new Date(endDateStr) : null;
 
     const vote = await prisma.vote.create({
       data: {
         id: voteId,
         title: title.trim(),
         description: description?.trim() || null,
-        type: voteType,
+        type,
         categoryId,
         creatorId: user.id,
         region: region || null,
-        isAnonymous: isAnonymous !== false,
+        isAnonymous,
         endDate,
         options: {
-          create: filteredOptions.map((opt: string, i: number) => ({
+          create: options.map((opt, i: number) => ({
             id: uuidv4(),
-            title: opt.trim(),
+            title: opt.title.trim(),
             position: i,
           })),
         },

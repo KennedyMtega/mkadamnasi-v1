@@ -5,6 +5,7 @@ import { Globe, Bell, Shield, Moon, Smartphone, LogOut, ChevronRight, HelpCircle
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -34,7 +35,8 @@ function SettingItem({ icon, label, description, action, onClick, danger }: Sett
 
 export default function SettingsPage() {
   const [language, setLanguage] = useState('sw');
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const darkMode = theme === 'dark';
   const [notifications, setNotifications] = useState(true);
 
   const Toggle = ({ enabled, onChange }: { enabled: boolean; onChange: () => void }) => (
@@ -104,7 +106,7 @@ export default function SettingsPage() {
               icon={<Moon size={20} className="text-neutral-700" />}
               label="Hali ya Giza"
               description={darkMode ? 'Imewashwa' : 'Imezimwa'}
-              action={<Toggle enabled={darkMode} onChange={() => setDarkMode(!darkMode)} />}
+              action={<Toggle enabled={darkMode} onChange={toggleTheme} />}
             />
           </Card>
         </div>

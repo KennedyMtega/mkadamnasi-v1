@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { createRatingSchema } from '@/lib/validations';
 
 /**
  * GET /api/ratings - List ratings with filtering
@@ -70,28 +71,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, categoryId, entityName, entityType, region, isAnonymous } = body;
 
-    if (!title || title.length < 3) {
+    // Zod validation
+    const parsed = createRatingSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Kichwa lazima kiwe na herufi 3 au zaidi.' },
+        { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    if (!categoryId) {
-      return NextResponse.json(
-        { error: 'Kategoria inahitajika.' },
-        { status: 400 }
-      );
-    }
-
-    if (!entityName || entityName.length < 2) {
-      return NextResponse.json(
-        { error: 'Jina la biashara/huduma linahitajika.' },
-        { status: 400 }
-      );
-    }
+    const { title, description, categoryId, entityName, entityType, region, isAnonymous } = parsed.data;
 
     const ratingId = uuidv4();
 
@@ -103,9 +93,9 @@ export async function POST(request: NextRequest) {
         categoryId,
         creatorId: user.id,
         entityName: entityName.trim(),
-        entityType: entityType || 'business',
+        entityType,
         region: region || null,
-        isAnonymous: isAnonymous !== false,
+        isAnonymous,
         distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 },
       },
       include: {
