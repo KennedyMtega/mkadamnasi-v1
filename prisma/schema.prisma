@@ -425,6 +425,11 @@ model Report {
   status      ReportStatus @default(PENDING)
   priority    Int          @default(0)
 
+  // Optional foreign keys for each target type
+  targetUserId  String?    @map("target_user_id")
+  targetVoteId  String?    @map("target_vote_id")
+  targetRatingId String?   @map("target_rating_id")
+
   // Moderation
   reviewedBy  String?      @map("reviewed_by")
   reviewedAt  DateTime?    @map("reviewed_at")
@@ -433,9 +438,9 @@ model Report {
   createdAt   DateTime     @default(now()) @map("created_at")
 
   reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
-  targetUser  User?        @relation("ReportTarget", fields: [targetId], references: [id], map: "report_target_user")
-  vote        Vote?        @relation(fields: [targetId], references: [id], map: "report_target_vote")
-  rating      Rating?      @relation(fields: [targetId], references: [id], map: "report_target_rating")
+  targetUser  User?        @relation("ReportTarget", fields: [targetUserId], references: [id])
+  vote        Vote?        @relation(fields: [targetVoteId], references: [id])
+  rating      Rating?      @relation(fields: [targetRatingId], references: [id])
 
   @@index([status, priority])
   @@index([targetType, targetId])
