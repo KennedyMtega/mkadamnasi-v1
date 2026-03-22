@@ -13,14 +13,35 @@ import 'widgets/featured_poll_card.dart';
 import 'widgets/trending_vote_card.dart';
 import 'widgets/top_rating_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(votesProvider.notifier).loadTrending();
+      ref.read(votesProvider.notifier).loadFeatured();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final votesState = ref.watch(votesProvider);
     final ratingsState = ref.watch(ratingsProvider);
     final notifState = ref.watch(notificationsProvider);
+
+    // Use trending from state, fallback to sorted votes
+    final trendingVotes = votesState.trendingVotes.isNotEmpty
+        ? votesState.trendingVotes
+        : (List.of(votesState.votes)..sort((a, b) => b.totalVotes.compareTo(a.totalVotes)));
+    final newVotes = List.of(votesState.votes)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final topRatings = List.of(ratingsState.ratings)..sort((a, b) => b.averageRating.compareTo(a.averageRating));
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -43,30 +64,17 @@ class HomeScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Habari! 👋',
-                              style: AppTypography.h1,
-                            ),
+                            Text('Habari!', style: AppTypography.h1),
                             const SizedBox(height: 4),
-                            Text(
-                              'Piga kura, kadiria, shiriki maoni yako',
-                              style: AppTypography.body,
-                            ),
+                            Text('Piga kura, kadiria, shiriki maoni yako', style: AppTypography.body),
                           ],
                         ),
                       ),
-                      // Notification bell
                       Stack(
                         children: [
                           IconButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/notifications');
-                            },
-                            icon: const Icon(
-                              Icons.notifications_outlined,
-                              color: AppColors.deepNavy,
-                              size: 28,
-                            ),
+                            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                            icon: const Icon(Icons.notifications_outlined, color: AppColors.deepNavy, size: 28),
                           ),
                           if (notifState.unreadCount > 0)
                             Positioned(
@@ -74,17 +82,8 @@ class HomeScreen extends ConsumerWidget {
                               top: 8,
                               child: Container(
                                 padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.errorRed,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '${notifState.unreadCount}',
-                                  style: AppTypography.caption.copyWith(
-                                    color: AppColors.white,
-                                    fontSize: 9,
-                                  ),
-                                ),
+                                decoration: const BoxDecoration(color: AppColors.errorRed, shape: BoxShape.circle),
+                                child: Text('${notifState.unreadCount}', style: AppTypography.caption.copyWith(color: AppColors.white, fontSize: 9)),
                               ),
                             ),
                         ],
@@ -106,22 +105,13 @@ class HomeScreen extends ConsumerWidget {
                         color: AppColors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppColors.lightGray),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.deepNavy.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        boxShadow: [BoxShadow(color: AppColors.deepNavy.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.search_rounded, color: AppColors.mediumGray, size: 22),
                           const SizedBox(width: 12),
-                          Text(
-                            'Tafuta kura, vipimo...',
-                            style: AppTypography.body.copyWith(color: AppColors.mediumGray),
-                          ),
+                          Text('Tafuta kura, vipimo...', style: AppTypography.body.copyWith(color: AppColors.mediumGray)),
                         ],
                       ),
                     ),
@@ -130,32 +120,19 @@ class HomeScreen extends ConsumerWidget {
               ),
 
               // Category chips
-              const SliverToBoxAdapter(
-                child: CategoryChips(),
-              ),
-
+              const SliverToBoxAdapter(child: CategoryChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-              // Content
               if (votesState.isLoading && ratingsState.isLoading)
-                const SliverFillRemaining(
-                  child: MkdLoading(message: 'Inapakia...'),
-                )
-              else if (votesState.error != null)
+                const SliverFillRemaining(child: MkdLoading(message: 'Inapakia...'))
+              else if (votesState.error != null && votesState.votes.isEmpty)
                 SliverFillRemaining(
-                  child: MkdErrorState(
-                    message: votesState.error!,
-                    onRetry: () => ref.read(votesProvider.notifier).refresh(),
-                  ),
+                  child: MkdErrorState(message: votesState.error!, onRetry: () => ref.read(votesProvider.notifier).refresh()),
                 )
               else ...[
-                // Kura Zinazovuma (Trending Votes)
+                // Kura Zinazovuma
                 SliverToBoxAdapter(
-                  child: MkdSectionHeader(
-                    title: 'Kura Zinazovuma',
-                    actionLabel: 'Zote',
-                    onAction: () => Navigator.pushNamed(context, '/trending'),
-                  ),
+                  child: MkdSectionHeader(title: 'Kura Zinazovuma', actionLabel: 'Zote', onAction: () => Navigator.pushNamed(context, '/trending')),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -163,27 +140,19 @@ class HomeScreen extends ConsumerWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: ref.read(votesProvider.notifier).trendingVotes.length,
+                      itemCount: trendingVotes.length,
                       itemBuilder: (context, index) {
-                        final vote = ref.read(votesProvider.notifier).trendingVotes[index];
-                        return FeaturedPollCard(
-                          vote: vote,
-                          onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id),
-                        );
+                        final vote = trendingVotes[index];
+                        return FeaturedPollCard(vote: vote, onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id));
                       },
                     ),
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // Vipimo Bora (Top Ratings)
+                // Vipimo Bora
                 SliverToBoxAdapter(
-                  child: MkdSectionHeader(
-                    title: 'Vipimo Bora',
-                    actionLabel: 'Zote',
-                    onAction: () => Navigator.pushNamed(context, '/trending'),
-                  ),
+                  child: MkdSectionHeader(title: 'Vipimo Bora', actionLabel: 'Zote', onAction: () => Navigator.pushNamed(context, '/trending')),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -191,27 +160,19 @@ class HomeScreen extends ConsumerWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: ref.read(ratingsProvider.notifier).topRatings.length,
+                      itemCount: topRatings.length,
                       itemBuilder: (context, index) {
-                        final rating = ref.read(ratingsProvider.notifier).topRatings[index];
-                        return TopRatingCard(
-                          rating: rating,
-                          onTap: () => Navigator.pushNamed(context, '/rating-detail', arguments: rating.id),
-                        );
+                        final rating = topRatings[index];
+                        return TopRatingCard(rating: rating, onTap: () => Navigator.pushNamed(context, '/rating-detail', arguments: rating.id));
                       },
                     ),
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // Kura Mpya (New Votes) - vertical list
+                // Kura Mpya horizontal
                 SliverToBoxAdapter(
-                  child: MkdSectionHeader(
-                    title: 'Kura Mpya',
-                    actionLabel: 'Zote',
-                    onAction: () => Navigator.pushNamed(context, '/trending'),
-                  ),
+                  child: MkdSectionHeader(title: 'Kura Mpya', actionLabel: 'Zote', onAction: () => Navigator.pushNamed(context, '/trending')),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -219,32 +180,26 @@ class HomeScreen extends ConsumerWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: ref.read(votesProvider.notifier).newVotes.length,
+                      itemCount: newVotes.length,
                       itemBuilder: (context, index) {
-                        final vote = ref.read(votesProvider.notifier).newVotes[index];
-                        return TrendingVoteCard(
-                          vote: vote,
-                          onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id),
-                        );
+                        final vote = newVotes[index];
+                        return TrendingVoteCard(vote: vote, onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id));
                       },
                     ),
                   ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-                // New Votes vertical list
+                // Kura Mpya vertical list
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final vote = ref.read(votesProvider.notifier).newVotes[index];
-                      return _NewVoteListItem(
-                        vote: vote,
-                        onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id),
-                      );
+                      final vote = newVotes[index];
+                      return _NewVoteListItem(vote: vote, onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id));
                     },
-                    childCount: ref.read(votesProvider.notifier).newVotes.length,
+                    childCount: newVotes.length,
                   ),
                 ),
-
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ],
@@ -263,6 +218,8 @@ class _NewVoteListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryName = vote.category?.displayName ?? 'Jumla';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -278,10 +235,7 @@ class _NewVoteListItem extends StatelessWidget {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.brandOrange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: AppColors.brandOrange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.how_to_vote_rounded, color: AppColors.brandOrange, size: 24),
             ),
             const SizedBox(width: 12),
@@ -289,25 +243,13 @@ class _NewVoteListItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    vote.title,
-                    style: AppTypography.buttonSm.copyWith(color: AppColors.deepNavy),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(vote.title as String, style: AppTypography.buttonSm.copyWith(color: AppColors.deepNavy), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(vote.category, style: AppTypography.caption),
+                      Text(categoryName, style: AppTypography.caption),
                       const SizedBox(width: 8),
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: const BoxDecoration(
-                          color: AppColors.mediumGray,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      Container(width: 3, height: 3, decoration: const BoxDecoration(color: AppColors.mediumGray, shape: BoxShape.circle)),
                       const SizedBox(width: 8),
                       Text('Kura ${vote.totalVotes}', style: AppTypography.caption),
                     ],

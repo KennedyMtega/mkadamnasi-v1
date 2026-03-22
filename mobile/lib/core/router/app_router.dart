@@ -16,6 +16,9 @@ import '../../screens/badges/badges_screen.dart';
 import '../../screens/leaderboard/leaderboard_screen.dart';
 import '../../screens/trending/trending_screen.dart';
 import '../../screens/referral/referral_screen.dart';
+import '../../screens/contest/contest_list_screen.dart';
+import '../../screens/contest/contest_detail_screen.dart';
+import '../../screens/contest/contestant_register_screen.dart';
 import '../../widgets/mkd_bottom_nav.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -147,6 +150,28 @@ class AppRouter {
         name: 'referral',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ReferralScreen(),
+      ),
+      GoRoute(
+        path: '/contest',
+        name: 'contestList',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ContestListScreen(),
+      ),
+      GoRoute(
+        path: '/contest/:id',
+        name: 'contestDetail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => ContestDetailScreen(
+          contestId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/contest/:id/register',
+        name: 'contestRegister',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => ContestantRegisterScreen(
+          contestId: state.pathParameters['id']!,
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

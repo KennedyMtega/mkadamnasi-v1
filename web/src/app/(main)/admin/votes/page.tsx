@@ -55,6 +55,7 @@ interface Pagination {
 const filterTabs = [
   { id: 'all', label: 'Zote (All)' },
   { id: 'active', label: 'Hai (Active)' },
+  { id: 'contest', label: 'Mashindano (Contests)' },
   { id: 'featured', label: 'Zilizoangaziwa (Featured)' },
   { id: 'flagged', label: 'Zilizoripotiwa (Flagged)' },
   { id: 'archived', label: 'Zilizohifadhiwa (Archived)' },

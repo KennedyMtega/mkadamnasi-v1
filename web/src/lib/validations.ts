@@ -21,7 +21,9 @@ export const createVoteSchema = z.object({
   title: z.string().min(5, 'Kichwa lazima kiwe na herufi 5+').max(200),
   description: z.string().max(1000).optional(),
   categoryId: z.string().uuid('Chagua kategoria'),
-  type: z.enum(['POLL', 'VERSUS', 'RANKING', 'TOURNAMENT']).default('POLL'),
+  type: z.enum(['POLL', 'VERSUS', 'RANKING', 'TOURNAMENT', 'CONTEST']).default('POLL'),
+  imageUrl: z.string().url().optional().or(z.literal('')), // Poll/contest cover image
+  businessId: z.string().uuid().optional().or(z.literal('')), // Business that owns this poll
   options: z.array(z.object({
     title: z.string().min(1, 'Chaguo linahitaji jina'),
     description: z.string().optional(),
@@ -31,6 +33,44 @@ export const createVoteSchema = z.object({
   isPublic: z.boolean().default(true),
   endDate: z.string().datetime().optional().or(z.literal('')),
   region: z.string().optional(),
+});
+
+// Contests (extends vote with contestant data)
+export const createContestSchema = z.object({
+  title: z.string().min(5, 'Kichwa lazima kiwe na herufi 5+').max(200),
+  description: z.string().max(2000).optional(),
+  categoryId: z.string().uuid('Chagua kategoria'),
+  imageUrl: z.string().url().optional().or(z.literal('')), // Contest cover image
+  businessId: z.string().uuid().optional().or(z.literal('')),
+  codePrefix: z.string().min(1).max(10).regex(/^[A-Z0-9]+$/, 'Herufi kubwa na nambari tu').default('C'),
+  contestants: z.array(z.object({
+    fullName: z.string().min(2, 'Jina kamili linahitajika'),
+    bio: z.string().max(500).optional(),
+    photoUrl: z.string().url().optional().or(z.literal('')),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })).min(2, 'Washiriki 2 au zaidi wanahitajika'),
+  isAnonymous: z.boolean().default(true),
+  isPublic: z.boolean().default(true),
+  endDate: z.string().datetime().optional().or(z.literal('')),
+  region: z.string().optional(),
+  registrationOpen: z.boolean().default(false), // Allow self-registration
+  boostEnabled: z.boolean().default(false),
+  boostPrice: z.number().positive().optional(), // Price per boost vote in TZS
+});
+
+// Contest self-registration
+export const contestRegistrationSchema = z.object({
+  fullName: z.string().min(2, 'Jina kamili linahitajika').max(100),
+  bio: z.string().max(500).optional(),
+  photoUrl: z.string().url().optional().or(z.literal('')),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+// Boost vote purchase
+export const boostVoteSchema = z.object({
+  optionId: z.string().uuid('Chagua mshiriki'),
+  amount: z.number().int().min(1).max(1000),
+  phoneNumber: z.string().regex(/^\+?255\d{9}$/, 'Nambari ya simu si sahihi'),
 });
 
 export const castVoteSchema = z.object({
@@ -84,6 +124,9 @@ export type CreateVoteInput = z.infer<typeof createVoteSchema>;
 export type CastVoteInput = z.infer<typeof castVoteSchema>;
 export type CreateRatingInput = z.infer<typeof createRatingSchema>;
 export type SubmitRatingInput = z.infer<typeof submitRatingSchema>;
+export type CreateContestInput = z.infer<typeof createContestSchema>;
+export type ContestRegistrationInput = z.infer<typeof contestRegistrationSchema>;
+export type BoostVoteInput = z.infer<typeof boostVoteSchema>;
 export type SearchInput = z.infer<typeof searchSchema>;
 export type ReportInput = z.infer<typeof reportSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

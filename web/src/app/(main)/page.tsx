@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { TrendingUp, ChevronRight, Star, Users, Shield, Award, X } from 'lucide-react';
+import { TrendingUp, ChevronRight, Star, Users, Shield, Award, X, Trophy } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import SearchInput from '@/components/ui/SearchInput';
 import { CATEGORIES } from '@/lib/constants';
@@ -62,14 +62,24 @@ export default function HomePage() {
   const [topRatings, setTopRatings] = useState<TopRating[]>(fallbackRatings);
   const [featuredPoll, setFeaturedPoll] = useState(fallbackFeatured);
   const [stats, setStats] = useState({ users: '...', ratings: '...', votes: '...' });
+  const [activeContests, setActiveContests] = useState<Array<{
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    totalVotes: number;
+    contestantCount: number;
+    endDate: string | null;
+    category?: { name: string };
+  }>>([]);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [votesRes, ratingsRes, statsRes] = await Promise.allSettled([
+        const [votesRes, ratingsRes, statsRes, contestsRes] = await Promise.allSettled([
           api.getVotes({ limit: '4' }),
           api.getRatings({ limit: '3' }),
           fetch('/api/stats').then(r => r.json()),
+          fetch('/api/contests?limit=3').then(r => r.json()),
         ]);
 
         if (statsRes.status === 'fulfilled' && statsRes.value.data) {
@@ -116,6 +126,17 @@ export default function HomePage() {
             category: r.category?.name || 'Mengine',
             rating: r.averageRating,
             totalRatings: r.totalRatings,
+          })));
+        }
+        if (contestsRes.status === 'fulfilled' && contestsRes.value.data?.length > 0) {
+          setActiveContests(contestsRes.value.data.map((c: { id: string; title: string; imageUrl: string | null; totalVotes: number; contestants?: unknown[]; options?: unknown[]; endDate: string | null; category?: { name: string } }) => ({
+            id: c.id,
+            title: c.title,
+            imageUrl: c.imageUrl,
+            totalVotes: c.totalVotes,
+            contestantCount: c.contestants?.length || c.options?.length || 0,
+            endDate: c.endDate,
+            category: c.category,
           })));
         }
       } catch {
@@ -229,6 +250,53 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* Active Contests */}
+      {activeContests.length > 0 && (
+        <div className="px-4 lg:px-6 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy size={18} className="text-amber-500" />
+              <h2 className="text-lg font-bold text-neutral-900">Mashindano Hai (Active Contests)</h2>
+            </div>
+            <Link href="/contest" className="text-sm font-semibold text-brand-primary flex items-center gap-0.5">
+              Yote <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            {activeContests.map((contest) => (
+              <Link key={contest.id} href={`/contest/${contest.id}`}>
+                <Card className="overflow-hidden hover:shadow-md transition-shadow group">
+                  {contest.imageUrl ? (
+                    <div className="w-full h-28 bg-neutral-100 overflow-hidden -m-4 mb-3">
+                      <img
+                        src={contest.imageUrl}
+                        alt={contest.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-28 bg-gradient-to-br from-brand-primary/20 to-purple-100 -m-4 mb-3 flex items-center justify-center">
+                      <Trophy size={32} className="text-brand-primary/40" />
+                    </div>
+                  )}
+                  <h3 className="font-semibold text-sm text-neutral-900 line-clamp-2">{contest.title}</h3>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-neutral-500">
+                    <span className="flex items-center gap-1">
+                      <Users size={12} />
+                      {contest.contestantCount} washiriki
+                    </span>
+                    <span>{formatNumber(contest.totalVotes)} kura</span>
+                    {contest.endDate && (
+                      <span>{getTimeLeftText(contest.endDate)}</span>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Trending Votes */}
       <div className="px-4 lg:px-6 mb-6">

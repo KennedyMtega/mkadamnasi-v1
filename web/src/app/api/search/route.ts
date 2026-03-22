@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       createdAt: Date;
     }> = [];
 
-    // Search votes
+    // Search votes (includes contests)
     if (type === 'all' || type === 'vote') {
       const voteWhere: Record<string, unknown> = {
         isActive: true,
@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
         OR: [
           { title: searchFilter },
           { description: searchFilter },
+          { contestants: { some: { fullName: searchFilter } } },
+          { contestants: { some: { code: searchFilter } } },
         ],
       };
       if (categoryId) voteWhere.categoryId = categoryId;

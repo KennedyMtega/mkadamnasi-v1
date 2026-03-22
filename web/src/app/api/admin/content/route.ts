@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
           where.isActive = true;
           where.status = 'ACTIVE';
           break;
+        case 'contest':
+          where.type = 'CONTEST';
+          break;
         case 'featured':
           where.isFeatured = true;
           break;

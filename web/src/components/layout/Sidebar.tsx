@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Search, PlusCircle, Bell, User, TrendingUp, Settings, Shield, BarChart3, Crown } from 'lucide-react';
+import { Home, Search, PlusCircle, Bell, User, TrendingUp, Settings, Shield, BarChart3, Crown, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mainNav = [
@@ -15,6 +15,7 @@ const mainNav = [
 
 const secondaryNav = [
   { href: '/trending', label: 'Vinavyotrendi', labelEn: 'Trending', icon: TrendingUp },
+  { href: '/contest', label: 'Mashindano', labelEn: 'Contests', icon: Trophy },
   { href: '/leaderboard', label: 'Ubao wa Viongozi', labelEn: 'Leaderboard', icon: BarChart3 },
   { href: '/premium', label: 'Premium', labelEn: 'Premium', icon: Crown },
 ];

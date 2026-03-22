@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createVoteSchema } from '@/lib/validations';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { rankByTrending } from '@/lib/algorithms/trending';
 
 /**
  * GET /api/votes - List votes with filtering
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
     if (region) where.region = region;
     if (featured === 'true') where.isFeatured = true;
 
+    const useTrending = searchParams.get('sort') === 'trending';
+
     const [votes, total] = await Promise.all([
       prisma.vote.findMany({
         where,
@@ -34,20 +37,44 @@ export async function GET(request: NextRequest) {
             orderBy: { position: 'asc' },
           },
           category: true,
+          contestants: { select: { id: true, code: true, fullName: true, photoUrl: true } },
         },
-        orderBy: [
-          { isFeatured: 'desc' },
-          { totalVotes: 'desc' },
-          { createdAt: 'desc' },
-        ],
-        take: limit,
-        skip: offset,
+        orderBy: useTrending
+          ? [{ createdAt: 'desc' }] // Will re-sort with algorithm
+          : [
+              { isFeatured: 'desc' },
+              { totalVotes: 'desc' },
+              { createdAt: 'desc' },
+            ],
+        take: useTrending ? limit * 3 : limit, // Fetch more for re-ranking
+        skip: useTrending ? 0 : offset,
       }),
       prisma.vote.count({ where }),
     ]);
 
+    // Apply trending algorithm if requested
+    let sortedVotes = votes;
+    if (useTrending && votes.length > 0) {
+      const ranked = rankByTrending(
+        votes.map((v) => ({
+          id: v.id,
+          totalVotes: v.totalVotes,
+          viewCount: v.viewCount,
+          shareCount: v.shareCount,
+          createdAt: v.createdAt,
+          isFeatured: v.isFeatured,
+          isPinned: v.isPinned,
+        }))
+      );
+      const rankedIds = ranked.map((r) => r.id);
+      sortedVotes = rankedIds
+        .map((id) => votes.find((v) => v.id === id)!)
+        .filter(Boolean)
+        .slice(offset, offset + limit);
+    }
+
     // Calculate percentages for each vote's options
-    const votesWithPercentages = votes.map((vote) => ({
+    const votesWithPercentages = sortedVotes.map((vote) => ({
       ...vote,
       options: vote.options.map((opt) => ({
         ...opt,
@@ -96,7 +123,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, type, categoryId, region, options, isAnonymous, endDate: endDateStr } = parsed.data;
+    const { title, description, type, categoryId, region, options, isAnonymous, endDate: endDateStr, imageUrl, businessId } = parsed.data;
 
     const voteId = uuidv4();
     const endDate = endDateStr ? new Date(endDateStr) : null;
@@ -109,13 +136,17 @@ export async function POST(request: NextRequest) {
         type,
         categoryId,
         creatorId: user.id,
+        businessId: businessId || null,
         region: region || null,
+        imageUrl: imageUrl || null,
         isAnonymous,
         endDate,
         options: {
           create: options.map((opt, i: number) => ({
             id: uuidv4(),
             title: opt.title.trim(),
+            description: opt.description?.trim() || null,
+            imageUrl: opt.imageUrl || null,
             position: i,
           })),
         },

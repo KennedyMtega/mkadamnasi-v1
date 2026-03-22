@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Vote, Star, ChevronRight, Image, Clock, Globe, Lock, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Vote, Star, ChevronRight, Image, Clock, Globe, Lock, Plus, Trash2, GripVertical, Trophy } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -154,6 +154,23 @@ export default function CreatePage() {
                   <h3 className="font-semibold text-neutral-900">Kadirio</h3>
                   <p className="text-sm text-neutral-700">Unda kadirio la siri — watu wakadidie kwa nyota</p>
                 </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/contest/create'; }}
+              className="w-full text-left p-4 rounded-2xl border-2 border-neutral-300 bg-neutral-0 hover:border-amber-400 hover:bg-amber-50 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-100">
+                  <Trophy size={24} className="text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-neutral-900">Mashindano (Contest)</h3>
+                  <p className="text-sm text-neutral-700">Unda mashindano kama Miss Tanzania — washiriki na misimbo</p>
+                </div>
+                <ChevronRight size={20} className="text-neutral-400" />
               </div>
             </button>
 

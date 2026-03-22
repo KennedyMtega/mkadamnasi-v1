@@ -56,6 +56,7 @@ model User {
   payments         Payment[]
   businessClaims   BusinessClaim[]
   notifications    Notification[]
+  boostVotes       BoostVote[]
 
   @@map("users")
 }
@@ -91,6 +92,7 @@ model Vote {
   type         VoteType   @default(POLL)
   categoryId   String     @map("category_id")
   creatorId    String     @map("creator_id")
+  businessId   String?    @map("business_id") // Business that owns this poll/contest
   region       String?
   imageUrl     String?    @map("image_url")
 
@@ -106,6 +108,13 @@ model Vote {
   totalVotes   Int        @default(0) @map("total_votes")
   viewCount    Int        @default(0) @map("view_count")
   shareCount   Int        @default(0) @map("share_count")
+
+  // Contest-specific fields
+  boostEnabled             Boolean   @default(false) @map("boost_enabled")
+  boostPrice               Decimal?  @db.Decimal(10, 2) @map("boost_price") // Price per boost vote in TZS
+  contestRegistrationOpen  Boolean   @default(false) @map("contest_registration_open")
+  registrationSlug         String?   @unique @map("registration_slug") // Shareable registration URL slug
+  codePrefix               String?   @map("code_prefix") // e.g., "MT" for Miss Tanzania → MT001, MT002
 
   // Scheduling
   startDate    DateTime   @default(now()) @map("start_date")
@@ -126,17 +135,22 @@ model Vote {
   // Relations
   category     Category      @relation(fields: [categoryId], references: [id])
   creator      User          @relation("VoteCreator", fields: [creatorId], references: [id])
+  business     Business?     @relation(fields: [businessId], references: [id])
   options      VoteOption[]
   entries      VoteEntry[]
+  contestants  Contestant[]
+  boostVotes   BoostVote[]
   reports      Report[]
 
   @@index([categoryId])
   @@index([creatorId])
+  @@index([businessId])
   @@index([status, isActive])
   @@index([isFeatured])
   @@index([isCurated])
   @@index([totalVotes])
   @@index([createdAt])
+  @@index([type])
   @@map("votes")
 }
 
@@ -151,8 +165,10 @@ model VoteOption {
 
   createdAt   DateTime @default(now()) @map("created_at")
 
-  vote        Vote        @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  vote        Vote          @relation(fields: [voteId], references: [id], onDelete: Cascade)
   entries     VoteEntry[]
+  contestant  Contestant?
+  boostVotes  BoostVote[]
 
   @@index([voteId])
   @@map("vote_options")
@@ -181,6 +197,56 @@ model VoteEntry {
   @@index([voteId])
   @@index([userId])
   @@map("vote_entries")
+}
+
+// ─── Contestants (Contest-specific) ────────────────────────────────
+
+model Contestant {
+  id            String   @id @default(uuid())
+  voteId        String   @map("vote_id") // Links to Vote where type=CONTEST
+  optionId      String   @unique @map("option_id") // Links to VoteOption (the voteable entity)
+  code          String   // Unique code within contest, e.g., "MT001"
+  fullName      String   @map("full_name")
+  bio           String?
+  photoUrl      String?  @map("photo_url")
+  registeredBy  String   @map("registered_by") // "creator" or "self"
+  isApproved    Boolean  @default(true) @map("is_approved")
+  metadata      Json?    // Extra fields: age, location, social links, etc.
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  vote          Vote       @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  option        VoteOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([voteId, code])
+  @@index([voteId])
+  @@map("contestants")
+}
+
+model BoostVote {
+  id          String        @id @default(uuid())
+  voteId      String        @map("vote_id")
+  optionId    String        @map("option_id")
+  userId      String        @map("user_id")
+  amount      Int           // Number of boost votes purchased
+  unitPrice   Decimal       @db.Decimal(10, 2) @map("unit_price") // Price per vote at time of purchase
+  totalPrice  Decimal       @db.Decimal(10, 2) @map("total_price")
+  paymentRef  String?       @map("payment_ref") // M-Pesa/payment transaction reference
+  phoneNumber String?       @map("phone_number") // Payment phone number
+  status      PaymentStatus @default(PENDING)
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  vote        Vote          @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  option      VoteOption    @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([voteId])
+  @@index([userId])
+  @@index([status])
+  @@map("boost_votes")
 }
 
 // ─── Ratings ───────────────────────────────────────────────────────
@@ -295,6 +361,7 @@ model Business {
 
   claims        BusinessClaim[]
   ratings       Rating[]
+  votes         Vote[]
 
   @@index([categorySlug])
   @@index([region])
@@ -596,6 +663,7 @@ enum VoteType {
   VERSUS
   RANKING
   TOURNAMENT
+  CONTEST
 }
 
 enum ContentStatus {

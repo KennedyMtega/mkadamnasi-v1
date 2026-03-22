@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/vote.dart';
 import '../models/vote_option.dart';
 import '../models/category.dart';
+import '../core/network/api_client.dart';
+import '../core/network/api_exceptions.dart';
+import '../core/constants/api_constants.dart';
+import 'auth_provider.dart';
 
 final _now = DateTime.now();
 
@@ -20,6 +24,7 @@ final _sampleVotes = [
       const VoteOption(id: 'o3', label: 'Luis Miquissone', voteCount: 159, percentage: 21.0, voteId: '1'),
     ],
     totalVotes: 757,
+    isFeatured: true,
     createdAt: _now.subtract(const Duration(days: 2)),
     updatedAt: _now,
     expiresAt: _now.add(const Duration(days: 5)),
@@ -80,53 +85,225 @@ final _sampleVotes = [
 
 class VotesState {
   final List<Vote> votes;
+  final List<Vote> featuredVotes;
+  final List<Vote> trendingVotes;
+  final Vote? selectedVote;
   final bool isLoading;
+  final bool isLoadingMore;
   final String? error;
+  final int currentPage;
+  final bool hasMore;
 
   const VotesState({
     this.votes = const [],
+    this.featuredVotes = const [],
+    this.trendingVotes = const [],
+    this.selectedVote,
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.error,
+    this.currentPage = 1,
+    this.hasMore = true,
   });
 
   VotesState copyWith({
     List<Vote>? votes,
+    List<Vote>? featuredVotes,
+    List<Vote>? trendingVotes,
+    Vote? selectedVote,
     bool? isLoading,
+    bool? isLoadingMore,
     String? error,
+    int? currentPage,
+    bool? hasMore,
   }) {
     return VotesState(
       votes: votes ?? this.votes,
+      featuredVotes: featuredVotes ?? this.featuredVotes,
+      trendingVotes: trendingVotes ?? this.trendingVotes,
+      selectedVote: selectedVote ?? this.selectedVote,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
+      currentPage: currentPage ?? this.currentPage,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 }
 
 class VotesNotifier extends StateNotifier<VotesState> {
-  VotesNotifier() : super(const VotesState()) {
+  final ApiClient _apiClient;
+
+  VotesNotifier(this._apiClient) : super(const VotesState()) {
     loadVotes();
   }
 
-  Future<void> loadVotes() async {
-    state = state.copyWith(isLoading: true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    state = state.copyWith(votes: _sampleVotes, isLoading: false);
+  Future<void> loadVotes({String? categoryId}) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.votes,
+        queryParameters: {
+          'page': 1,
+          'limit': 20,
+          if (categoryId != null) 'categoryId': categoryId,
+        },
+      );
+      final votes = (response['data'] as List<dynamic>)
+          .map((e) => Vote.fromJson(e as Map<String, dynamic>))
+          .toList();
+      state = state.copyWith(
+        votes: votes,
+        isLoading: false,
+        currentPage: 1,
+        hasMore: votes.length >= 20,
+      );
+    } on ApiException catch (e) {
+      // Fall back to sample data
+      state = state.copyWith(
+        votes: _sampleVotes,
+        isLoading: false,
+        error: e.message,
+      );
+    } catch (_) {
+      state = state.copyWith(
+        votes: _sampleVotes,
+        isLoading: false,
+      );
+    }
+  }
+
+  Future<void> loadFeatured() async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.voteFeatured,
+      );
+      final votes = (response['data'] as List<dynamic>)
+          .map((e) => Vote.fromJson(e as Map<String, dynamic>))
+          .toList();
+      state = state.copyWith(featuredVotes: votes);
+    } catch (_) {
+      state = state.copyWith(
+        featuredVotes: _sampleVotes.where((v) => v.isFeatured).toList(),
+      );
+    }
+  }
+
+  Future<void> loadTrending() async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.voteTrending,
+      );
+      final votes = (response['data'] as List<dynamic>)
+          .map((e) => Vote.fromJson(e as Map<String, dynamic>))
+          .toList();
+      state = state.copyWith(trendingVotes: votes);
+    } catch (_) {
+      final sorted = [..._sampleVotes];
+      sorted.sort((a, b) => b.totalVotes.compareTo(a.totalVotes));
+      state = state.copyWith(trendingVotes: sorted);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore) return;
+    state = state.copyWith(isLoadingMore: true);
+    try {
+      final nextPage = state.currentPage + 1;
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.votes,
+        queryParameters: {'page': nextPage, 'limit': 20},
+      );
+      final newVotes = (response['data'] as List<dynamic>)
+          .map((e) => Vote.fromJson(e as Map<String, dynamic>))
+          .toList();
+      state = state.copyWith(
+        votes: [...state.votes, ...newVotes],
+        isLoadingMore: false,
+        currentPage: nextPage,
+        hasMore: newVotes.length >= 20,
+      );
+    } catch (_) {
+      state = state.copyWith(isLoadingMore: false, hasMore: false);
+    }
   }
 
   Future<void> refresh() async {
     await loadVotes();
+    await loadFeatured();
+    await loadTrending();
   }
 
-  List<Vote> get trendingVotes {
-    final sorted = [...state.votes];
-    sorted.sort((a, b) => b.totalVotes.compareTo(a.totalVotes));
-    return sorted;
+  Future<Vote?> getVoteById(String id) async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        ApiConstants.voteById(id),
+      );
+      final vote = Vote.fromJson(response);
+      state = state.copyWith(selectedVote: vote);
+      return vote;
+    } catch (_) {
+      // Try local
+      try {
+        final vote = state.votes.firstWhere((v) => v.id == id);
+        state = state.copyWith(selectedVote: vote);
+        return vote;
+      } catch (_) {
+        return null;
+      }
+    }
   }
 
-  List<Vote> get newVotes {
-    final sorted = [...state.votes];
-    sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return sorted;
+  Future<bool> castVote(String voteId, String optionId) async {
+    try {
+      await _apiClient.post(
+        ApiConstants.castVote(voteId),
+        data: {'optionId': optionId},
+      );
+      // Update local state
+      final updatedVotes = state.votes.map((v) {
+        if (v.id == voteId) {
+          return v.copyWith(
+            hasVoted: true,
+            selectedOptionId: optionId,
+            totalVotes: v.totalVotes + 1,
+          );
+        }
+        return v;
+      }).toList();
+      state = state.copyWith(votes: updatedVotes);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Vote?> createVote({
+    required String title,
+    String? description,
+    required List<String> optionLabels,
+    String? categoryId,
+    String type = 'standard',
+    DateTime? expiresAt,
+  }) async {
+    try {
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        ApiConstants.votes,
+        data: {
+          'title': title,
+          'description': description,
+          'options': optionLabels.map((l) => {'label': l}).toList(),
+          'categoryId': categoryId,
+          'type': type,
+          'expiresAt': expiresAt?.toIso8601String(),
+        },
+      );
+      final vote = Vote.fromJson(response);
+      state = state.copyWith(votes: [vote, ...state.votes]);
+      return vote;
+    } catch (_) {
+      return null;
+    }
   }
 
   List<Vote> votesByCategory(String categoryId) {
@@ -143,5 +320,6 @@ class VotesNotifier extends StateNotifier<VotesState> {
 }
 
 final votesProvider = StateNotifierProvider<VotesNotifier, VotesState>((ref) {
-  return VotesNotifier();
+  final apiClient = ref.watch(apiClientProvider);
+  return VotesNotifier(apiClient);
 });

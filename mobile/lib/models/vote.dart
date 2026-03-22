@@ -1,5 +1,6 @@
 import 'vote_option.dart';
 import 'category.dart';
+import 'contestant.dart';
 
 class Vote {
   final String id;
@@ -24,6 +25,12 @@ class Vote {
   final bool? hasVoted;
   final String? selectedOptionId;
   final List<String> tags;
+  final bool boostEnabled;
+  final double? boostPrice;
+  final bool contestRegistrationOpen;
+  final String? registrationSlug;
+  final String? codePrefix;
+  final List<Contestant> contestants;
 
   const Vote({
     required this.id,
@@ -48,6 +55,12 @@ class Vote {
     this.hasVoted,
     this.selectedOptionId,
     this.tags = const [],
+    this.boostEnabled = false,
+    this.boostPrice,
+    this.contestRegistrationOpen = false,
+    this.registrationSlug,
+    this.codePrefix,
+    this.contestants = const [],
   });
 
   factory Vote.fromJson(Map<String, dynamic> json) {
@@ -84,6 +97,15 @@ class Vote {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      boostEnabled: json['boostEnabled'] as bool? ?? false,
+      boostPrice: (json['boostPrice'] as num?)?.toDouble(),
+      contestRegistrationOpen: json['contestRegistrationOpen'] as bool? ?? false,
+      registrationSlug: json['registrationSlug'] as String?,
+      codePrefix: json['codePrefix'] as String?,
+      contestants: (json['contestants'] as List<dynamic>?)
+              ?.map((e) => Contestant.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -111,6 +133,12 @@ class Vote {
       'hasVoted': hasVoted,
       'selectedOptionId': selectedOptionId,
       'tags': tags,
+      'boostEnabled': boostEnabled,
+      'boostPrice': boostPrice,
+      'contestRegistrationOpen': contestRegistrationOpen,
+      'registrationSlug': registrationSlug,
+      'codePrefix': codePrefix,
+      'contestants': contestants.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -137,6 +165,12 @@ class Vote {
     bool? hasVoted,
     String? selectedOptionId,
     List<String>? tags,
+    bool? boostEnabled,
+    double? boostPrice,
+    bool? contestRegistrationOpen,
+    String? registrationSlug,
+    String? codePrefix,
+    List<Contestant>? contestants,
   }) {
     return Vote(
       id: id ?? this.id,
@@ -161,6 +195,12 @@ class Vote {
       hasVoted: hasVoted ?? this.hasVoted,
       selectedOptionId: selectedOptionId ?? this.selectedOptionId,
       tags: tags ?? this.tags,
+      boostEnabled: boostEnabled ?? this.boostEnabled,
+      boostPrice: boostPrice ?? this.boostPrice,
+      contestRegistrationOpen: contestRegistrationOpen ?? this.contestRegistrationOpen,
+      registrationSlug: registrationSlug ?? this.registrationSlug,
+      codePrefix: codePrefix ?? this.codePrefix,
+      contestants: contestants ?? this.contestants,
     );
   }
 
