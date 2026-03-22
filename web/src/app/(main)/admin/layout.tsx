@@ -26,6 +26,12 @@ const adminNavItems = [
   { href: '/admin/ratings', label: 'Tathmini (Ratings)', icon: Star },
   { href: '/admin/reports', label: 'Ripoti (Reports)', icon: Flag },
   { href: '/admin/categories', label: 'Makundi (Categories)', icon: FolderTree },
+  { href: '/admin/monetization', label: 'Mapato (Monetization)', icon: LayoutDashboard },
+  { href: '/admin/marketing', label: 'Masoko (Marketing)', icon: Flag },
+  { href: '/admin/ab-testing', label: 'Majaribio A/B (A/B Tests)', icon: Vote },
+  { href: '/admin/algorithms', label: 'Kanuni (Algorithms)', icon: Settings },
+  { href: '/admin/analytics', label: 'Uchambuzi (Analytics)', icon: Star },
+  { href: '/admin/sales', label: 'Mauzo (Sales)', icon: FolderTree },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

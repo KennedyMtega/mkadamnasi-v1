@@ -52,9 +52,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _controller,
           focusNode: _focusNode,
           onChanged: (val) => ref.read(searchProvider.notifier).setQuery(val),
-          onSubmitted: (val) {
-            ref.read(searchProvider.notifier).addRecentSearch(val);
-          },
+          onSubmitted: (val) => ref.read(searchProvider.notifier).addRecentSearch(val),
           decoration: InputDecoration(
             hintText: 'Tafuta kura, vipimo...',
             hintStyle: AppTypography.body.copyWith(color: AppColors.mediumGray),
@@ -63,7 +61,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           style: AppTypography.body.copyWith(color: AppColors.deepNavy),
         ),
         actions: [
-          if (_controller.text.isNotEmpty)
+          if (searchState.query.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.close_rounded, color: AppColors.mediumGray),
               onPressed: () {
@@ -102,17 +100,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
-
           const Divider(height: 1, color: AppColors.lightGray),
 
-          // Content
           Expanded(
             child: searchState.query.isEmpty
                 ? _buildRecentSearches(searchState)
                 : searchState.isSearching
-                    ? const Center(
-                        child: CircularProgressIndicator(color: AppColors.brandOrange),
-                      )
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.brandOrange))
                     : _buildSearchResults(votesState, ratingsState, searchState),
           ),
         ],
@@ -138,10 +132,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             Text('Tafuta za Hivi Karibuni', style: AppTypography.h4),
             GestureDetector(
               onTap: () => ref.read(searchProvider.notifier).clearRecentSearches(),
-              child: Text(
-                'Futa',
-                style: AppTypography.buttonSm.copyWith(color: AppColors.brandOrange),
-              ),
+              child: Text('Futa', style: AppTypography.buttonSm.copyWith(color: AppColors.brandOrange)),
             ),
           ],
         ),
@@ -165,7 +156,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget _buildSearchResults(VotesState votesState, RatingsState ratingsState, SearchState searchState) {
     final query = searchState.query.toLowerCase();
     final matchingVotes = votesState.votes
-        .where((v) => v.title.toLowerCase().contains(query) || v.category.toLowerCase().contains(query))
+        .where((v) => v.title.toLowerCase().contains(query) || (v.category?.displayName ?? '').toLowerCase().contains(query))
         .toList();
     final matchingRatings = ratingsState.ratings
         .where((r) => r.title.toLowerCase().contains(query) || r.entityName.toLowerCase().contains(query))
@@ -194,7 +185,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 icon: Icons.how_to_vote_rounded,
                 iconColor: AppColors.brandOrange,
                 title: vote.title,
-                subtitle: '${vote.category} - Kura ${vote.totalVotes}',
+                subtitle: '${vote.category?.displayName ?? ''} - Kura ${vote.totalVotes}',
                 onTap: () => Navigator.pushNamed(context, '/vote-detail', arguments: vote.id),
               )),
           const SizedBox(height: 20),
@@ -235,9 +226,7 @@ class _FilterChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: AppTypography.buttonSm.copyWith(
-            color: isSelected ? AppColors.white : AppColors.darkGray,
-          ),
+          style: AppTypography.buttonSm.copyWith(color: isSelected ? AppColors.white : AppColors.darkGray),
         ),
       ),
     );
@@ -251,13 +240,7 @@ class _SearchResultItem extends StatelessWidget {
   final String subtitle;
   final VoidCallback? onTap;
 
-  const _SearchResultItem({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-  });
+  const _SearchResultItem({required this.icon, required this.iconColor, required this.title, required this.subtitle, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -276,10 +259,7 @@ class _SearchResultItem extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 12),

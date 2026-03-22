@@ -233,21 +233,69 @@ export default function AdminDashboard() {
         ) : null}
       </div>
 
+      {/* Revenue & Moderation row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <Card padding="sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <BarChart3 size={16} className="text-semantic-success" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-neutral-900">TZS 2.4M</p>
+              <p className="text-[11px] text-neutral-500">Mapato (Revenue)</p>
+            </div>
+          </div>
+        </Card>
+        <Card padding="sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <Activity size={16} className="text-semantic-info" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-neutral-900">3</p>
+              <p className="text-[11px] text-neutral-500">Kampeni Hai (Active Campaigns)</p>
+            </div>
+          </div>
+        </Card>
+        <Card padding="sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+              <Flag size={16} className="text-semantic-warning" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-neutral-900">12</p>
+              <p className="text-[11px] text-neutral-500">Maudhui ya Kuangaliwa (Moderation Queue)</p>
+            </div>
+          </div>
+        </Card>
+        <Card padding="sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
+              <Vote size={16} className="text-purple-600" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-neutral-900">2</p>
+              <p className="text-[11px] text-neutral-500">Majaribio A/B (A/B Tests)</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {/* Activity chart placeholder & Quick actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Activity chart placeholder */}
+        {/* User growth chart placeholder */}
         <Card className="lg:col-span-2" padding="lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-neutral-900">
-              Shughuli za Hivi Karibuni (Recent Activity)
+              Ukuaji wa Watumiaji (User Growth)
             </h2>
-            <span className="text-xs text-neutral-500">Siku 7 zilizopita</span>
+            <span className="text-xs text-neutral-500">Miezi 6 iliyopita</span>
           </div>
           <div className="h-48 lg:h-64 bg-neutral-100 rounded-xl flex items-center justify-center border border-dashed border-neutral-300">
             <div className="text-center">
               <BarChart3 size={40} className="text-neutral-300 mx-auto mb-2" />
               <p className="text-sm text-neutral-500">
-                Chati ya shughuli (Activity chart)
+                Chati ya ukuaji wa watumiaji (User growth chart)
               </p>
               <p className="text-xs text-neutral-400 mt-1">
                 Itaonyeshwa hapa baadaye (Coming soon)
@@ -277,19 +325,19 @@ export default function AdminDashboard() {
                 Angalia Ripoti (View Reports)
               </Button>
             </Link>
-            <Link href="/admin/users" className="block">
-              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<Users size={16} />}>
-                Simamia Watumiaji (Manage Users)
+            <Link href="/admin/monetization" className="block">
+              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<BarChart3 size={16} />}>
+                Mapato (Monetization)
               </Button>
             </Link>
-            <Link href="/admin/votes" className="block">
-              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<Vote size={16} />}>
-                Simamia Kura (Manage Votes)
+            <Link href="/admin/marketing" className="block">
+              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<Activity size={16} />}>
+                Kampeni (Marketing)
               </Button>
             </Link>
-            <Link href="/admin/ratings" className="block">
-              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<Star size={16} />}>
-                Simamia Tathmini (Manage Ratings)
+            <Link href="/admin/analytics" className="block">
+              <Button variant="secondary" size="sm" className="w-full justify-start" icon={<BarChart3 size={16} />}>
+                Uchambuzi (Analytics)
               </Button>
             </Link>
           </div>
