@@ -47,7 +47,7 @@ class User {
       anonymousId: json['anonymousId'] as String? ?? '',
       isAnonymous: json['isAnonymous'] as bool? ?? true,
       role: json['role'] as String? ?? 'user',
-      reputationScore: json['reputationScore'] as int? ?? 0,
+      reputationScore: (json['points'] ?? json['reputationScore'] ?? 0) as int,
       totalVotes: json['totalVotes'] as int? ?? 0,
       totalRatings: json['totalRatings'] as int? ?? 0,
       totalPolls: json['totalPolls'] as int? ?? 0,

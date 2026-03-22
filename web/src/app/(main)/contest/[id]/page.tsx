@@ -23,6 +23,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { cn, formatNumber, getAnonymousId } from '@/lib/utils';
 import ContestLeaderboard from '@/features/contest/components/ContestLeaderboard';
 import VoteByCode from '@/features/contest/components/VoteByCode';
+import { CommentSection } from '@/features/comments/components/CommentSection';
 import Link from 'next/link';
 
 interface Contestant {
@@ -404,6 +405,9 @@ export default function ContestDetailPage() {
         <Button variant="secondary" className="w-full" icon={<Share2 size={18} />} onClick={handleShare}>
           Shiriki Mashindano (Share Contest)
         </Button>
+
+        {/* Comments */}
+        <CommentSection targetId={id as string} targetType="vote" />
       </div>
 
       <Toast

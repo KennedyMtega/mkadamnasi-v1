@@ -73,11 +73,13 @@ export async function GET(request: NextRequest) {
         .slice(offset, offset + limit);
     }
 
-    // Calculate percentages for each vote's options
+    // Calculate percentages and add field aliases for mobile compatibility
     const votesWithPercentages = sortedVotes.map((vote) => ({
       ...vote,
+      expiresAt: vote.endDate, // Alias for mobile compatibility
       options: vote.options.map((opt) => ({
         ...opt,
+        label: opt.title, // Alias for mobile compatibility
         percentage: vote.totalVotes > 0
           ? Math.round((opt.voteCount / vote.totalVotes) * 100)
           : 0,

@@ -11,6 +11,7 @@ import Toast from '@/components/ui/Toast';
 import Skeleton from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
+import { CommentSection } from '@/features/comments/components/CommentSection';
 
 interface VoteOption {
   id: string;
@@ -242,6 +243,9 @@ export default function VoteDetailPage() {
             </Button>
           </div>
         )}
+
+        {/* Comments */}
+        <CommentSection targetId={id as string} targetType="vote" />
       </div>
 
       <Toast

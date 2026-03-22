@@ -50,10 +50,20 @@ export const api = {
     isAnonymous: boolean;
     duration: string;
   }) {
+    // Convert duration to endDate (API expects ISO datetime string)
+    const { duration, options: rawOptions, ...rest } = data;
+    const endDate = duration === 'forever'
+      ? undefined
+      : new Date(Date.now() + parseInt(duration) * 24 * 60 * 60 * 1000).toISOString();
+
     const res = await fetch(`${BASE_URL}/api/votes`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...rest,
+        endDate,
+        options: rawOptions.filter(o => o.trim()).map(title => ({ title })),
+      }),
     });
     return handleResponse(res);
   },

@@ -14,6 +14,7 @@ import Toast from '@/components/ui/Toast';
 import Skeleton from '@/components/ui/Skeleton';
 import { getRatingColor, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api-client';
+import { CommentSection } from '@/features/comments/components/CommentSection';
 
 const RATING_COLORS = ['#EF4444', '#F97316', '#F59E0B', '#34D399', '#10B981'];
 
@@ -254,6 +255,9 @@ export default function RatingDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Comments */}
+        <CommentSection targetId={id as string} targetType="rating" />
       </div>
 
       <Toast

@@ -3,6 +3,7 @@ import '../models/vote.dart';
 import '../models/contestant.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_exceptions.dart';
+import '../core/constants/api_constants.dart';
 import 'auth_provider.dart';
 
 final _now = DateTime.now();
@@ -203,7 +204,7 @@ class ContestsNotifier extends StateNotifier<ContestsState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/contests',
+        ApiConstants.contests,
         queryParameters: {'page': 1, 'limit': 20},
       );
       final contests = (response['data'] as List<dynamic>)
@@ -230,7 +231,7 @@ class ContestsNotifier extends StateNotifier<ContestsState> {
   Future<Vote?> fetchContestDetail(String id) async {
     try {
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/contests/$id',
+        ApiConstants.contestById(id),
       );
       final contest = Vote.fromJson(response);
       state = state.copyWith(selectedContest: contest);
@@ -255,7 +256,7 @@ class ContestsNotifier extends StateNotifier<ContestsState> {
     state = state.copyWith(isVoting: true, error: null);
     try {
       await _apiClient.post(
-        '/contests/$contestId/vote',
+        ApiConstants.contestVote(contestId),
         data: {
           if (optionId != null) 'optionId': optionId,
           if (code != null) 'code': code,
@@ -298,7 +299,7 @@ class ContestsNotifier extends StateNotifier<ContestsState> {
     state = state.copyWith(isRegistering: true, error: null);
     try {
       final response = await _apiClient.post<Map<String, dynamic>>(
-        '/contests/$contestId/register',
+        ApiConstants.contestRegister(contestId),
         data: data,
       );
       state = state.copyWith(isRegistering: false);

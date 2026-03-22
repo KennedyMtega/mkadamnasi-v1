@@ -70,15 +70,15 @@ class Vote {
       description: json['description'] as String?,
       type: json['type'] as String? ?? 'standard',
       status: json['status'] as String? ?? 'active',
-      isAnonymous: json['isAnonymous'] as bool? ?? true,
-      isFeatured: json['isFeatured'] as bool? ?? false,
-      allowMultiple: json['allowMultiple'] as bool? ?? false,
-      totalVotes: json['totalVotes'] as int? ?? 0,
-      viewCount: json['viewCount'] as int? ?? 0,
-      shareCount: json['shareCount'] as int? ?? 0,
-      imageUrl: json['imageUrl'] as String?,
-      creatorId: json['creatorId'] as String?,
-      categoryId: json['categoryId'] as String?,
+      isAnonymous: (json['isAnonymous'] ?? json['is_anonymous'] ?? true) as bool,
+      isFeatured: (json['isFeatured'] ?? json['is_featured'] ?? false) as bool,
+      allowMultiple: (json['allowMultiple'] ?? json['allow_multiple'] ?? false) as bool,
+      totalVotes: (json['totalVotes'] ?? json['total_votes'] ?? 0) as int,
+      viewCount: (json['viewCount'] ?? json['view_count'] ?? 0) as int,
+      shareCount: (json['shareCount'] ?? json['share_count'] ?? 0) as int,
+      imageUrl: (json['imageUrl'] ?? json['image_url']) as String?,
+      creatorId: (json['creatorId'] ?? json['creator_id']) as String?,
+      categoryId: (json['categoryId'] ?? json['category_id']) as String?,
       category: json['category'] != null
           ? Category.fromJson(json['category'] as Map<String, dynamic>)
           : null,
@@ -86,8 +86,8 @@ class Vote {
               ?.map((e) => VoteOption.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'] as String)
+      expiresAt: (json['endDate'] ?? json['expiresAt']) != null
+          ? DateTime.parse((json['endDate'] ?? json['expiresAt']) as String)
           : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -127,6 +127,7 @@ class Vote {
       'categoryId': categoryId,
       'category': category?.toJson(),
       'options': options.map((e) => e.toJson()).toList(),
+      'endDate': expiresAt?.toIso8601String(),
       'expiresAt': expiresAt?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -206,7 +207,7 @@ class Vote {
 
   bool get isExpired =>
       expiresAt != null && expiresAt!.isBefore(DateTime.now());
-  bool get isActive => status == 'active' && !isExpired;
+  bool get isActive => status.toUpperCase() == 'ACTIVE' && !isExpired;
 
   Duration get timeRemaining =>
       expiresAt?.difference(DateTime.now()) ?? Duration.zero;

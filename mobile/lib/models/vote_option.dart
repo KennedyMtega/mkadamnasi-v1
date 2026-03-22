@@ -18,17 +18,18 @@ class VoteOption {
   factory VoteOption.fromJson(Map<String, dynamic> json) {
     return VoteOption(
       id: json['id'] as String,
-      label: json['label'] as String,
-      imageUrl: json['imageUrl'] as String?,
-      voteCount: json['voteCount'] as int? ?? 0,
+      label: (json['title'] ?? json['label'] ?? '') as String,
+      imageUrl: (json['imageUrl'] ?? json['image_url']) as String?,
+      voteCount: (json['voteCount'] ?? json['vote_count'] ?? 0) as int,
       percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
-      voteId: json['voteId'] as String? ?? '',
+      voteId: (json['voteId'] ?? json['vote_id'] ?? '') as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'title': label,
       'label': label,
       'imageUrl': imageUrl,
       'voteCount': voteCount,

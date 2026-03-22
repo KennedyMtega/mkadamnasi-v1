@@ -5,6 +5,7 @@ import '../../core/theme/app_typography.dart';
 import '../../providers/votes_provider.dart';
 import '../../widgets/mkd_loading.dart';
 import '../../widgets/mkd_error_state.dart';
+import '../../widgets/comment_section.dart';
 
 class VoteDetailScreen extends ConsumerStatefulWidget {
   final String voteId;
@@ -234,6 +235,12 @@ class _VoteDetailScreenState extends ConsumerState<VoteDetailScreen> {
                         ],
                       ),
                     ),
+
+                  // Comments Section
+                  CommentSection(
+                    targetId: widget.voteId,
+                    targetType: 'vote',
+                  ),
 
                   const SizedBox(height: 40),
                 ],

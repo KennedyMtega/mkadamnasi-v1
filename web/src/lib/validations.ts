@@ -118,6 +118,20 @@ export const updateProfileSchema = z.object({
   language: z.enum(['sw', 'en']).optional(),
 });
 
+// Comments
+export const createCommentSchema = z.object({
+  content: z.string().min(1, 'Maoni yanahitajika').max(500, 'Maoni mengi mno (500 max)'),
+  voteId: z.string().uuid().optional(),
+  ratingId: z.string().uuid().optional(),
+  parentId: z.string().uuid().optional(),
+  isAnonymous: z.boolean().default(true),
+}).refine(data => data.voteId || data.ratingId, {
+  message: 'voteId au ratingId inahitajika',
+  path: ['voteId'],
+});
+
+export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type CreateVoteInput = z.infer<typeof createVoteSchema>;

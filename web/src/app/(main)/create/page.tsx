@@ -322,12 +322,15 @@ export default function CreatePage() {
                 <Clock size={20} className="text-brand-primary" />
                 <p className="text-sm font-semibold text-neutral-900">Muda wa Kura</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {['1', '3', '7', '14', '30'].map((d) => (
                   <Chip key={d} active={duration === d} onClick={() => setDuration(d)}>
                     {d} siku
                   </Chip>
                 ))}
+                <Chip active={duration === 'forever'} onClick={() => setDuration('forever')}>
+                  Kudumu ♾️
+                </Chip>
               </div>
             </Card>
 
@@ -350,7 +353,7 @@ export default function CreatePage() {
                   <p><span className="text-neutral-500">Kichwa:</span> <span className="font-medium text-neutral-900">{title}</span></p>
                   <p><span className="text-neutral-500">Kategoria:</span> <span className="font-medium text-neutral-900">{CATEGORIES.find(c => c.id === category)?.name}</span></p>
                   {createType === 'vote' && <p><span className="text-neutral-500">Chaguzi:</span> <span className="font-medium text-neutral-900">{options.filter(o => o.trim()).length}</span></p>}
-                  <p><span className="text-neutral-500">Muda:</span> <span className="font-medium text-neutral-900">{duration} siku</span></p>
+                  <p><span className="text-neutral-500">Muda:</span> <span className="font-medium text-neutral-900">{duration === 'forever' ? 'Kudumu (Haina mwisho)' : `${duration} siku`}</span></p>
                   <p><span className="text-neutral-500">Siri:</span> <Badge variant={isAnonymous ? 'success' : 'warning'}>{isAnonymous ? 'Ndio' : 'Hapana'}</Badge></p>
                 </div>
               </Card>

@@ -59,6 +59,17 @@ class ApiConstants {
   static const userProfile = '/users/profile';
   static const userStats = '/users/stats';
 
+  // Contests
+  static const contests = '/contests';
+  static String contestById(String id) => '/contests/$id';
+  static String contestVote(String id) => '/contests/$id/vote';
+  static String contestRegister(String id) => '/contests/$id/register';
+  static String contestBoost(String id) => '/contests/$id/boost';
+
+  // Comments
+  static const comments = '/comments';
+  static String commentById(String id) => '/comments/$id';
+
   // Timeouts
   static const connectionTimeout = Duration(seconds: 30);
   static const receiveTimeout = Duration(seconds: 30);
