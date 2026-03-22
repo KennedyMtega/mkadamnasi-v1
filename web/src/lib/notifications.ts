@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 
 export async function createNotification(params: {
@@ -13,7 +14,7 @@ export async function createNotification(params: {
       type: params.type,
       title: params.title,
       body: params.body,
-      data: params.data ?? null,
+      data: params.data ?? Prisma.DbNull,
     },
   });
 }

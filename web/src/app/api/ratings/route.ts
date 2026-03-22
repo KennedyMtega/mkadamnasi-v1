@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createRatingSchema } from '@/lib/validations';
+import { checkAndAwardBadges } from '@/lib/badges';
 
 /**
  * GET /api/ratings - List ratings with filtering

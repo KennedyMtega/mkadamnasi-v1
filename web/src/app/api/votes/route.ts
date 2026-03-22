@@ -132,7 +132,13 @@ export async function POST(request: NextRequest) {
       data: { points: { increment: 5 } },
     });
 
-    return NextResponse.json({ data: vote }, { status: 201 });
+    // Check and award badges (non-blocking)
+    const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
+      console.error('Failed to check badges:', err);
+      return [] as string[];
+    });
+
+    return NextResponse.json({ data: vote, newBadges }, { status: 201 });
   } catch (error) {
     console.error('Error creating vote:', error);
     return NextResponse.json(
