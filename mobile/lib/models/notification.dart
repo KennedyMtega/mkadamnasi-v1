@@ -1,39 +1,42 @@
-class ActivityItem {
+class AppNotification {
   final String id;
   final String type;
   final String title;
-  final String? description;
+  final String body;
   final String? entityId;
   final String? entityType;
+  final String? actionUrl;
   final String? userId;
+  final bool isRead;
   final Map<String, dynamic>? metadata;
-  final int? pointsEarned;
   final DateTime createdAt;
 
-  const ActivityItem({
+  const AppNotification({
     required this.id,
     required this.type,
     required this.title,
-    this.description,
+    required this.body,
     this.entityId,
     this.entityType,
+    this.actionUrl,
     this.userId,
+    this.isRead = false,
     this.metadata,
-    this.pointsEarned,
     required this.createdAt,
   });
 
-  factory ActivityItem.fromJson(Map<String, dynamic> json) {
-    return ActivityItem(
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
       id: json['id'] as String,
-      type: json['type'] as String,
+      type: json['type'] as String? ?? 'general',
       title: json['title'] as String,
-      description: json['description'] as String?,
+      body: json['body'] as String,
       entityId: json['entityId'] as String?,
       entityType: json['entityType'] as String?,
+      actionUrl: json['actionUrl'] as String?,
       userId: json['userId'] as String?,
+      isRead: json['isRead'] as bool? ?? false,
       metadata: json['metadata'] as Map<String, dynamic>?,
-      pointsEarned: json['pointsEarned'] as int?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -43,60 +46,59 @@ class ActivityItem {
       'id': id,
       'type': type,
       'title': title,
-      'description': description,
+      'body': body,
       'entityId': entityId,
       'entityType': entityType,
+      'actionUrl': actionUrl,
       'userId': userId,
+      'isRead': isRead,
       'metadata': metadata,
-      'pointsEarned': pointsEarned,
       'createdAt': createdAt.toIso8601String(),
     };
   }
 
-  ActivityItem copyWith({
+  AppNotification copyWith({
     String? id,
     String? type,
     String? title,
-    String? description,
+    String? body,
     String? entityId,
     String? entityType,
+    String? actionUrl,
     String? userId,
+    bool? isRead,
     Map<String, dynamic>? metadata,
-    int? pointsEarned,
     DateTime? createdAt,
   }) {
-    return ActivityItem(
+    return AppNotification(
       id: id ?? this.id,
       type: type ?? this.type,
       title: title ?? this.title,
-      description: description ?? this.description,
+      body: body ?? this.body,
       entityId: entityId ?? this.entityId,
       entityType: entityType ?? this.entityType,
+      actionUrl: actionUrl ?? this.actionUrl,
       userId: userId ?? this.userId,
+      isRead: isRead ?? this.isRead,
       metadata: metadata ?? this.metadata,
-      pointsEarned: pointsEarned ?? this.pointsEarned,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
-  String get activityIcon {
-    switch (type) {
-      case 'vote_cast':
-        return 'how_to_vote';
-      case 'rating_given':
-        return 'star';
-      case 'badge_earned':
-        return 'emoji_events';
-      case 'poll_created':
-        return 'add_circle';
-      case 'rating_created':
-        return 'rate_review';
-      case 'level_up':
-        return 'trending_up';
-      case 'referral':
-        return 'person_add';
-      default:
-        return 'circle';
+  String get notificationRoute {
+    if (actionUrl != null) return actionUrl!;
+    if (entityId != null && entityType != null) {
+      switch (entityType) {
+        case 'vote':
+          return '/vote/$entityId';
+        case 'rating':
+          return '/rating/$entityId';
+        case 'badge':
+          return '/badges';
+        default:
+          return '/notifications';
+      }
     }
+    return '/notifications';
   }
 }
