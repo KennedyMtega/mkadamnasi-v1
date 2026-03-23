@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/users/stats - Get current user stats
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching user stats:', error);
+    logger.error('Error fetching user stats:', { source: 'api/users/stats' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

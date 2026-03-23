@@ -6,6 +6,7 @@ import { submitRatingSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { createRatingMilestoneNotification } from '@/lib/notifications';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/ratings/[id]/submit - Submit a rating (1-5 stars + optional review)
@@ -140,7 +141,7 @@ export async function POST(
 
     // Check and award badges (non-blocking)
     const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
-      console.error('Failed to check badges:', err);
+      logger.error('Failed to check badges:', { source: 'api/ratings/[id]/submit' }, error instanceof Error ? error : new Error(String(error)));
       return [] as string[];
     });
 
@@ -156,7 +157,7 @@ export async function POST(
       message: 'Kadirio lako limehifadhiwa! Asante.',
     });
   } catch (error) {
-    console.error('Error submitting rating:', error);
+    logger.error('Error submitting rating:', { source: 'api/ratings/[id]/submit' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

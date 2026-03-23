@@ -107,6 +107,7 @@ model Vote {
   isAnonymous  Boolean    @default(true) @map("is_anonymous")
   isCurated    Boolean    @default(false) @map("is_curated") // Mkadamnasi "forever votes"
   isPublic     Boolean    @default(true) @map("is_public")
+  visibility   String     @default("public") // public, invite_only, qr_only
 
   // Stats
   totalVotes   Int        @default(0) @map("total_votes")
@@ -147,6 +148,7 @@ model Vote {
   boostVotes   BoostVote[]
   reports      Report[]
   comments     Comment[]
+  invites      PollInvite[]
 
   @@index([categoryId])
   @@index([creatorId])
@@ -662,6 +664,51 @@ model AuditLog {
   @@index([target, targetId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─── System Logs ──────────────────────────────────────────────────
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  level     String   // error, warn, info, debug
+  source    String   // API route or component path e.g. "api/votes/POST"
+  message   String
+  stack     String?  @db.Text
+  metadata  Json?    // Request details, user agent, etc.
+  userId    String?  @map("user_id")
+  requestId String?  @map("request_id")
+  duration  Int?     // Request duration in ms
+  statusCode Int?    @map("status_code")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([level])
+  @@index([source])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("system_logs")
+}
+
+// ─── Poll Invites (Private Polls) ─────────────────────────────────
+
+model PollInvite {
+  id          String   @id @default(uuid())
+  voteId      String   @map("vote_id")
+  inviteCode  String   @unique @map("invite_code") // Short shareable code
+  maxUses     Int?     @map("max_uses") // null = unlimited
+  usedCount   Int      @default(0) @map("used_count")
+  isActive    Boolean  @default(true) @map("is_active")
+  expiresAt   DateTime? @map("expires_at")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vote        Vote     @relation(fields: [voteId], references: [id], onDelete: Cascade)
+
+  @@index([voteId])
+  @@index([inviteCode])
+  @@map("poll_invites")
 }
 
 // ─── Comments ─────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import { castVoteSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { createVoteMilestoneNotification } from '@/lib/notifications';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/votes/[id]/cast - Cast a vote on a poll
@@ -162,7 +163,7 @@ export async function POST(
 
     // Check and award badges (non-blocking)
     const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
-      console.error('Failed to check badges:', err);
+      logger.error('Failed to check badges:', { source: 'api/votes/[id]/cast' }, error instanceof Error ? error : new Error(String(error)));
       return [] as string[];
     });
 
@@ -177,7 +178,7 @@ export async function POST(
       message: 'Kura yako imehesabiwa! Asante.',
     });
   } catch (error) {
-    console.error('Error casting vote:', error);
+    logger.error('Error casting vote:', { source: 'api/votes/[id]/cast' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

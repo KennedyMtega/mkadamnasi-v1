@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Vote, Star, ChevronRight, Image, Clock, Globe, Lock, Plus, Trash2, GripVertical, Trophy } from 'lucide-react';
+import { Vote, Star, ChevronRight, Image, Clock, Globe, Lock, Plus, Trash2, GripVertical, Trophy, Link, QrCode } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -29,6 +29,7 @@ export default function CreatePage() {
   const [entityName, setEntityName] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [duration, setDuration] = useState('7');
+  const [visibility, setVisibility] = useState<'public' | 'invite' | 'qr'>('public');
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
@@ -62,6 +63,7 @@ export default function CreatePage() {
           options: options.filter(o => o.trim()),
           isAnonymous,
           duration,
+          visibility,
         });
       } else {
         await api.createRating({
@@ -334,15 +336,50 @@ export default function CreatePage() {
               </div>
             </Card>
 
-            <Card>
-              <div className="flex items-center gap-3">
-                <Globe size={20} className="text-semantic-info" />
-                <div>
-                  <p className="text-sm font-semibold text-neutral-900">Hadharani</p>
-                  <p className="text-xs text-neutral-500">Kura hii itaonekana na wote</p>
-                </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-900 mb-2">Mwonekano wa Kura</p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibility('public')}
+                  className={`w-full text-left p-3 rounded-xl border-2 transition-all ${visibility === 'public' ? 'border-brand-primary bg-brand-primary-light' : 'border-neutral-300 bg-neutral-0'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe size={20} className={visibility === 'public' ? 'text-brand-primary' : 'text-semantic-info'} />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">Hadharani</p>
+                      <p className="text-xs text-neutral-500">Kura hii itaonekana na wote</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('invite')}
+                  className={`w-full text-left p-3 rounded-xl border-2 transition-all ${visibility === 'invite' ? 'border-brand-primary bg-brand-primary-light' : 'border-neutral-300 bg-neutral-0'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Link size={20} className={visibility === 'invite' ? 'text-brand-primary' : 'text-semantic-warning'} />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">Kwa Mwaliko Tu</p>
+                      <p className="text-xs text-neutral-500">Inapatikana tu kwa msimbo/kiungo cha kushiriki</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('qr')}
+                  className={`w-full text-left p-3 rounded-xl border-2 transition-all ${visibility === 'qr' ? 'border-brand-primary bg-brand-primary-light' : 'border-neutral-300 bg-neutral-0'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <QrCode size={20} className={visibility === 'qr' ? 'text-brand-primary' : 'text-neutral-500'} />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">QR Code Tu</p>
+                      <p className="text-xs text-neutral-500">Inapatikana tu kwa kuchanganua QR code</p>
+                    </div>
+                  </div>
+                </button>
               </div>
-            </Card>
+            </div>
 
             {/* Preview */}
             <div className="pt-2">
@@ -355,6 +392,7 @@ export default function CreatePage() {
                   {createType === 'vote' && <p><span className="text-neutral-500">Chaguzi:</span> <span className="font-medium text-neutral-900">{options.filter(o => o.trim()).length}</span></p>}
                   <p><span className="text-neutral-500">Muda:</span> <span className="font-medium text-neutral-900">{duration === 'forever' ? 'Kudumu (Haina mwisho)' : `${duration} siku`}</span></p>
                   <p><span className="text-neutral-500">Siri:</span> <Badge variant={isAnonymous ? 'success' : 'warning'}>{isAnonymous ? 'Ndio' : 'Hapana'}</Badge></p>
+                  <p><span className="text-neutral-500">Mwonekano:</span> <Badge variant={visibility === 'public' ? 'info' : 'warning'}>{visibility === 'public' ? 'Hadharani' : visibility === 'invite' ? 'Mwaliko Tu' : 'QR Code Tu'}</Badge></p>
                 </div>
               </Card>
             </div>

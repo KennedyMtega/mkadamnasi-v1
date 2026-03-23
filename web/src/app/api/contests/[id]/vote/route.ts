@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser, hashIp, getClientIp } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { rateLimit } from '@/lib/rate-limit';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/contests/[id]/vote - Vote for a contestant
@@ -175,7 +176,7 @@ export async function POST(
 
       // Check and award badges (non-blocking)
       const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
-        console.error('Failed to check badges:', err);
+        logger.error('Failed to check badges:', { source: 'api/contests/[id]/vote' }, error instanceof Error ? error : new Error(String(error)));
         return [] as string[];
       });
 
@@ -207,7 +208,7 @@ export async function POST(
       throw err;
     }
   } catch (error) {
-    console.error('Error voting in contest:', error);
+    logger.error('Error voting in contest:', { source: 'api/contests/[id]/vote' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

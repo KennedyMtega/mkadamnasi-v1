@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { z } from 'zod';
+import { logger, getRequestContext } from '@/lib/logger';
 
 const claimSchema = z.object({
   businessName: z.string().min(2, 'Jina la biashara ni fupi sana (Business name too short)').max(200),
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       total: claims.length,
     });
   } catch (error) {
-    console.error('Business claim list error:', error);
+    logger.error('Business claim list error:', { source: 'api/business/claim' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (error) {
-    console.error('Business claim create error:', error);
+    logger.error('Business claim create error:', { source: 'api/business/claim' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

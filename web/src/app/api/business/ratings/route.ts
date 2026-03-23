@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Business ratings error:', error);
+    logger.error('Business ratings error:', { source: 'api/business/ratings' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

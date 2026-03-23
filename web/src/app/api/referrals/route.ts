@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/referrals - Get current user's referral stats
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching referral stats:', error);
+    logger.error('Error fetching referral stats:', { source: 'api/referrals' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
       newBadges,
     }, { status: 201 });
   } catch (error) {
-    console.error('Error claiming referral:', error);
+    logger.error('Error claiming referral:', { source: 'api/referrals' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

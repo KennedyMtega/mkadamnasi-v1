@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createContestSchema } from '@/lib/validations';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/contests - List active contests with filtering
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching contests:', error);
+    logger.error('Error fetching contests:', { source: 'api/contests' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -214,13 +215,13 @@ export async function POST(request: NextRequest) {
 
     // Check and award badges (non-blocking)
     const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
-      console.error('Failed to check badges:', err);
+      logger.error('Failed to check badges:', { source: 'api/contests' }, error instanceof Error ? error : new Error(String(error)));
       return [] as string[];
     });
 
     return NextResponse.json({ data: contest, newBadges }, { status: 201 });
   } catch (error) {
-    console.error('Error creating contest:', error);
+    logger.error('Error creating contest:', { source: 'api/contests' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

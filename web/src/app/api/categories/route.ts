@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/categories - List all active categories with counts
@@ -33,7 +34,7 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    logger.error('Error fetching categories:', { source: 'api/categories' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/ratings/[id] - Get a single rating with distribution and reviews
@@ -98,7 +99,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error fetching rating:', error);
+    logger.error('Error fetching rating:', { source: 'api/ratings/[id]' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

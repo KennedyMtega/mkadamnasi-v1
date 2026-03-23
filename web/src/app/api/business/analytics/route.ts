@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Business analytics error:', error);
+    logger.error('Business analytics error:', { source: 'api/business/analytics' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

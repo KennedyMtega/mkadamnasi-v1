@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/activity - Get user's activity feed
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
       unreadNotifications,
     });
   } catch (error) {
-    console.error('Error fetching activity:', error);
+    logger.error('Error fetching activity:', { source: 'api/activity' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

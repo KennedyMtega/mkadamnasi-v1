@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 async function verifyAdmin(request: NextRequest) {
   const user = await getOrCreateAnonymousUser(request);
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Aina isiyojulikana (Unknown type)' }, { status: 400 });
   } catch (error) {
-    console.error('Admin content error:', error);
+    logger.error('Admin content error:', { source: 'api/admin/content' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }
@@ -247,7 +248,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ error: 'Aina isiyojulikana (Unknown type)' }, { status: 400 });
   } catch (error) {
-    console.error('Admin content action error:', error);
+    logger.error('Admin content action error:', { source: 'api/admin/content' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

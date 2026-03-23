@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 async function verifyAdmin(request: NextRequest) {
   const user = await getOrCreateAnonymousUser(request);
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Admin users error:', error);
+    logger.error('Admin users error:', { source: 'api/admin/users' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }
@@ -165,7 +166,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
-    console.error('Admin user action error:', error);
+    logger.error('Admin user action error:', { source: 'api/admin/users' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

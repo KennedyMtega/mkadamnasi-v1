@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 async function verifyAdmin(request: NextRequest) {
   const user = await getOrCreateAnonymousUser(request);
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ categories });
   } catch (error) {
-    console.error('Admin categories error:', error);
+    logger.error('Admin categories error:', { source: 'api/admin/categories' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }
@@ -157,7 +158,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ error: 'Kitendo kisichojulikana (Unknown action)' }, { status: 400 });
   } catch (error) {
-    console.error('Admin category action error:', error);
+    logger.error('Admin category action error:', { source: 'api/admin/categories' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

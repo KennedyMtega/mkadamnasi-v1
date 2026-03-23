@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { BADGE_DEFINITIONS } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/badges - Return all badges with user's earned status and progress
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching badges:', error);
+    logger.error('Error fetching badges:', { source: 'api/badges' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

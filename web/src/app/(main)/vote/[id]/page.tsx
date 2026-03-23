@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Share2, Flag, Clock, Users, Shield, CheckCircle } from 'lucide-react';
+import { Share2, Flag, Clock, Users, Shield, CheckCircle, Link, QrCode, Copy, Check } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -27,10 +27,14 @@ interface VoteData {
   category: { name: string };
   totalVotes: number;
   isActive: boolean;
+  isPublic: boolean;
+  visibility: string;
   timeLeft: string | null;
   options: VoteOption[];
   hasVoted: boolean;
   userVoteOptionId: string | null;
+  inviteCode: string | null;
+  isCreator: boolean;
 }
 
 export default function VoteDetailPage() {
@@ -44,6 +48,24 @@ export default function VoteDetailPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyInviteCode = () => {
+    if (vote?.inviteCode) {
+      navigator.clipboard.writeText(vote.inviteCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (vote?.inviteCode) {
+      const link = `${window.location.origin}/vote/${vote.id}?code=${vote.inviteCode}`;
+      navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     async function fetchVote() {
@@ -158,6 +180,52 @@ export default function VoteDetailPage() {
           <Shield size={16} className="text-semantic-success shrink-0" />
           <p className="text-xs text-semantic-success font-medium">Kura yako ni ya siri. Hakuna mtu atakayejua umepiga kura gani.</p>
         </div>
+
+        {/* Private Poll Sharing (visible to creator) */}
+        {vote.inviteCode && vote.isCreator && (
+          <Card>
+            <div className="flex items-center gap-2 mb-3">
+              {vote.visibility === 'qr_only' ? (
+                <QrCode size={18} className="text-brand-primary" />
+              ) : (
+                <Link size={18} className="text-brand-primary" />
+              )}
+              <p className="text-sm font-semibold text-neutral-900">
+                {vote.visibility === 'qr_only' ? 'Shiriki kwa QR Code' : 'Shiriki kwa Msimbo'}
+              </p>
+              <Badge variant="warning">
+                {vote.visibility === 'qr_only' ? 'QR Tu' : 'Mwaliko Tu'}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2 bg-neutral-100 rounded-xl p-3">
+              <code className="flex-1 text-sm font-mono font-bold text-neutral-900 tracking-widest">
+                {vote.inviteCode}
+              </code>
+              <button
+                onClick={copyInviteCode}
+                className="p-2 rounded-lg hover:bg-neutral-200 transition-colors"
+              >
+                {copied ? <Check size={18} className="text-semantic-success" /> : <Copy size={18} className="text-neutral-500" />}
+              </button>
+            </div>
+
+            <button
+              onClick={copyInviteLink}
+              className="w-full mt-2 text-xs text-brand-primary font-medium py-2 hover:underline"
+            >
+              Nakili kiungo cha mwaliko
+            </button>
+          </Card>
+        )}
+
+        {/* Private poll notice for non-creators */}
+        {!vote.isPublic && !vote.isCreator && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-xl">
+            <Link size={16} className="text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-700 font-medium">Kura hii ni ya faragha — inapatikana tu kwa waalikwa.</p>
+          </div>
+        )}
 
         {/* Vote Options */}
         <div className="space-y-2.5">

@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { registerSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
+import { logger, getRequestContext } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       merged: false,
     }, { status: 201 });
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', { source: 'api/auth/register' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya ndani. Tafadhali jaribu tena.' },
       { status: 500 }

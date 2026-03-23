@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 async function verifyAdmin(request: NextRequest) {
   const user = await getOrCreateAnonymousUser(request);
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Admin stats error:', error);
+    logger.error('Admin stats error:', { source: 'api/admin/stats' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya seva (Server error)' },
       { status: 500 }

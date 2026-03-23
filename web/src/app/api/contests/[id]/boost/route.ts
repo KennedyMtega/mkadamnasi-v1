@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { boostVoteSchema } from '@/lib/validations';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/contests/[id]/boost - Purchase boost votes
@@ -133,7 +134,7 @@ export async function POST(
       },
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating boost vote:', error);
+    logger.error('Error creating boost vote:', { source: 'api/contests/[id]/boost' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -204,7 +205,7 @@ export async function PATCH(
 
     return NextResponse.json({ data: result });
   } catch (error) {
-    console.error('Error confirming boost payment:', error);
+    logger.error('Error confirming boost payment:', { source: 'api/contests/[id]/boost' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

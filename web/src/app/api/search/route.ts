@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/search - Full-text search across votes and ratings
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error searching:', error);
+    logger.error('Error searching:', { source: 'api/search' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { createCommentSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/comments - List comments for a vote or rating
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching comments:', error);
+    logger.error('Error fetching comments:', { source: 'api/comments' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: comment }, { status: 201 });
   } catch (error) {
-    console.error('Error creating comment:', error);
+    logger.error('Error creating comment:', { source: 'api/comments' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

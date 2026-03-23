@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/votes/[id] - Get a single vote with options and results
@@ -27,6 +28,11 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // For private polls, validate invite code (unless it's the creator)
+    const { searchParams } = new URL(request.url);
+    const inviteCodeParam = searchParams.get('code');
+    // We'll check creator status later - for now just validate if code is needed
 
     // Increment view count
     await prisma.vote.update({
@@ -64,6 +70,7 @@ export async function GET(
     const anonymousId = request.headers.get('x-anonymous-id');
     let hasVoted = false;
     let userVoteOptionId: string | null = null;
+    let isCreator = false;
 
     if (anonymousId) {
       const { createHash } = await import('crypto');
@@ -73,6 +80,7 @@ export async function GET(
       });
 
       if (user) {
+        isCreator = user.id === vote.creatorId;
         const existingEntry = await prisma.voteEntry.findUnique({
           where: { voteId_userId: { voteId: id, userId: user.id } },
         });
@@ -83,6 +91,39 @@ export async function GET(
       }
     }
 
+    // For private polls, check access
+    if (!vote.isPublic && !isCreator) {
+      if (!inviteCodeParam) {
+        return NextResponse.json(
+          { error: 'Kura hii ni ya faragha. Unahitaji msimbo wa mwaliko.', requiresInvite: true },
+          { status: 403 }
+        );
+      }
+      const validInvite = await prisma.pollInvite.findFirst({
+        where: { voteId: id, inviteCode: inviteCodeParam, isActive: true },
+      });
+      if (!validInvite) {
+        return NextResponse.json(
+          { error: 'Msimbo wa mwaliko si sahihi.', requiresInvite: true },
+          { status: 403 }
+        );
+      }
+      // Increment usage count
+      await prisma.pollInvite.update({
+        where: { id: validInvite.id },
+        data: { usedCount: { increment: 1 } },
+      });
+    }
+
+    // Get invite code if private poll and user is creator
+    let inviteCode: string | null = null;
+    if (!vote.isPublic && isCreator) {
+      const invite = await prisma.pollInvite.findFirst({
+        where: { voteId: id, isActive: true },
+      });
+      inviteCode = invite?.inviteCode || null;
+    }
+
     return NextResponse.json({
       data: {
         ...vote,
@@ -90,10 +131,12 @@ export async function GET(
         timeLeft,
         hasVoted,
         userVoteOptionId,
+        inviteCode,
+        isCreator,
       },
     });
   } catch (error) {
-    console.error('Error fetching vote:', error);
+    logger.error('Error fetching vote:', { source: 'api/votes/[id]' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

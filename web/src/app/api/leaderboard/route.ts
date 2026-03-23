@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/leaderboard - Top users by points
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('Error fetching leaderboard:', error);
+    logger.error('Error fetching leaderboard:', { source: 'api/leaderboard' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

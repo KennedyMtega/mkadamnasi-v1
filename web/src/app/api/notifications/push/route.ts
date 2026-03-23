@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/notifications/push - Register an FCM push token for the current user.
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       message: 'Tokeni ya push imesajiliwa.',
     });
   } catch (error) {
-    console.error('Error registering push token:', error);
+    logger.error('Error registering push token:', { source: 'api/notifications/push' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -91,7 +92,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Tokeni ya push imeondolewa.',
     });
   } catch (error) {
-    console.error('Error removing push token:', error);
+    logger.error('Error removing push token:', { source: 'api/notifications/push' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

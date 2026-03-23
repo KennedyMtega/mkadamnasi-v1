@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/prisma';
+import { logger, getRequestContext } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Anonymous auth error:', error);
+    logger.error('Anonymous auth error:', { source: 'api/auth/anonymous' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Hitilafu ya ndani. Tafadhali jaribu tena.' },
       { status: 500 }

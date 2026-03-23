@@ -5,6 +5,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { createVoteSchema } from '@/lib/validations';
 import { checkAndAwardBadges } from '@/lib/badges';
 import { rankByTrending } from '@/lib/algorithms/trending';
+import { logger, getRequestContext } from '@/lib/logger';
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 /**
  * GET /api/votes - List votes with filtering
@@ -21,6 +31,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {
       isActive: true,
       status: 'ACTIVE',
+      isPublic: true, // Only show public polls in listings
     };
 
     if (categoryId) where.categoryId = categoryId;
@@ -93,7 +104,8 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching votes:', error);
+    const ctx = getRequestContext(request, 'api/votes/GET');
+    logger.error('Failed to fetch votes', { ...ctx, statusCode: 500 }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -105,9 +117,12 @@ export async function GET(request: NextRequest) {
  * POST /api/votes - Create a new vote/poll
  */
 export async function POST(request: NextRequest) {
+  const ctx = getRequestContext(request, 'api/votes/POST');
+  const startTime = Date.now();
   try {
     const user = await getOrCreateAnonymousUser(request);
     if (!user) {
+      logger.warn('Vote creation rejected: missing anonymous ID', ctx);
       return NextResponse.json(
         { error: 'Kitambulisho cha siri kinahitajika.' },
         { status: 401 }
@@ -119,6 +134,7 @@ export async function POST(request: NextRequest) {
     // Zod validation
     const parsed = createVoteSchema.safeParse(body);
     if (!parsed.success) {
+      logger.warn('Vote creation validation failed', { ...ctx, userId: user.id, metadata: { errors: parsed.error.flatten().fieldErrors } });
       return NextResponse.json(
         { error: 'Taarifa si sahihi', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
@@ -126,6 +142,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { title, description, type, categoryId, region, options, isAnonymous, endDate: endDateStr, imageUrl, businessId } = parsed.data;
+    const visibility = (body.visibility as string) || 'public';
+    const isPublic = body.isPublic !== undefined ? body.isPublic : visibility === 'public';
 
     const voteId = uuidv4();
     const endDate = endDateStr ? new Date(endDateStr) : null;
@@ -142,6 +160,8 @@ export async function POST(request: NextRequest) {
         region: region || null,
         imageUrl: imageUrl || null,
         isAnonymous,
+        isPublic,
+        visibility,
         endDate,
         options: {
           create: options.map((opt, i: number) => ({
@@ -159,6 +179,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create invite code for private polls
+    let inviteCode: string | null = null;
+    if (visibility === 'invite_only' || visibility === 'qr_only') {
+      inviteCode = generateInviteCode();
+      await prisma.pollInvite.create({
+        data: {
+          voteId: vote.id,
+          inviteCode,
+        },
+      });
+    }
+
     // Award points for creating a vote
     await prisma.user.update({
       where: { id: user.id },
@@ -167,13 +199,15 @@ export async function POST(request: NextRequest) {
 
     // Check and award badges (non-blocking)
     const newBadges = await checkAndAwardBadges(user.id, prisma).catch((err) => {
-      console.error('Failed to check badges:', err);
+      logger.error('Failed to check badges after vote creation', { ...ctx, userId: user.id }, err instanceof Error ? err : new Error(String(err)));
       return [] as string[];
     });
 
-    return NextResponse.json({ data: vote, newBadges }, { status: 201 });
+    logger.info('Vote created successfully', { ...ctx, userId: user.id, duration: Date.now() - startTime, metadata: { voteId: vote.id, visibility } });
+
+    return NextResponse.json({ data: { ...vote, inviteCode }, newBadges }, { status: 201 });
   } catch (error) {
-    console.error('Error creating vote:', error);
+    logger.error('Failed to create vote', { ...ctx, statusCode: 500, duration: Date.now() - startTime }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

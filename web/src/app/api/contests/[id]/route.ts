@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/contests/[id] - Get contest detail with leaderboard
@@ -48,7 +49,7 @@ export async function GET(
       where: { id },
       data: { viewCount: { increment: 1 } },
     }).catch((err) => {
-      console.error('Failed to increment viewCount:', err);
+      logger.error('Failed to increment viewCount:', { source: 'api/contests/[id]' }, error instanceof Error ? error : new Error(String(error)));
     });
 
     // Check if current user has voted
@@ -101,7 +102,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error fetching contest:', error);
+    logger.error('Error fetching contest:', { source: 'api/contests/[id]' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

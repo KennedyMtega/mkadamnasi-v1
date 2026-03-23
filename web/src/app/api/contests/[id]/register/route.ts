@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { contestRegistrationSchema } from '@/lib/validations';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/contests/[id]/register - Contestant self-registration
@@ -122,7 +123,7 @@ export async function POST(
 
     return NextResponse.json({ data: contestant }, { status: 201 });
   } catch (error) {
-    console.error('Error registering contestant:', error);
+    logger.error('Error registering contestant:', { source: 'api/contests/[id]/register' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

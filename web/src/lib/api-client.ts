@@ -49,12 +49,15 @@ export const api = {
     options: string[];
     isAnonymous: boolean;
     duration: string;
+    visibility?: 'public' | 'invite' | 'qr';
   }) {
     // Convert duration to endDate (API expects ISO datetime string)
-    const { duration, options: rawOptions, ...rest } = data;
+    const { duration, options: rawOptions, visibility = 'public', ...rest } = data;
     const endDate = duration === 'forever'
       ? undefined
       : new Date(Date.now() + parseInt(duration) * 24 * 60 * 60 * 1000).toISOString();
+
+    const visibilityMap = { public: 'public', invite: 'invite_only', qr: 'qr_only' } as const;
 
     const res = await fetch(`${BASE_URL}/api/votes`, {
       method: 'POST',
@@ -62,6 +65,8 @@ export const api = {
       body: JSON.stringify({
         ...rest,
         endDate,
+        isPublic: visibility === 'public',
+        visibility: visibilityMap[visibility],
         options: rawOptions.filter(o => o.trim()).map(title => ({ title })),
       }),
     });

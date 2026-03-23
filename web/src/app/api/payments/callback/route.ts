@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * POST /api/payments/callback - Receive payment provider callbacks/webhooks.
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       resultDesc: 'Callback received successfully.',
     });
   } catch (error) {
-    console.error('Error processing payment callback:', error);
+    logger.error('Error processing payment callback:', { source: 'api/payments/callback' }, error instanceof Error ? error : new Error(String(error)));
     // Still return 200 to prevent provider retries on parse errors
     return NextResponse.json({
       resultCode: 0,

@@ -4,6 +4,7 @@ import { getOrCreateAnonymousUser } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createRatingSchema } from '@/lib/validations';
 import { checkAndAwardBadges } from '@/lib/badges';
+import { logger, getRequestContext } from '@/lib/logger';
 
 /**
  * GET /api/ratings - List ratings with filtering
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching ratings:', error);
+    logger.error('Error fetching ratings:', { source: 'api/ratings' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: rating }, { status: 201 });
   } catch (error) {
-    console.error('Error creating rating:', error);
+    logger.error('Error creating rating:', { source: 'api/ratings' }, error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Tatizo la seva. Jaribu tena.' },
       { status: 500 }

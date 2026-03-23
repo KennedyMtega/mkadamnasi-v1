@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ScrollText,
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -31,6 +32,7 @@ const adminNavItems = [
   { href: '/admin/ab-testing', label: 'Majaribio A/B (A/B Tests)', icon: Vote },
   { href: '/admin/algorithms', label: 'Kanuni (Algorithms)', icon: Settings },
   { href: '/admin/analytics', label: 'Uchambuzi (Analytics)', icon: Star },
+  { href: '/admin/logs', label: 'Kumbukumbu (System Logs)', icon: ScrollText },
   { href: '/admin/sales', label: 'Mauzo (Sales)', icon: FolderTree },
 ];
 
